@@ -8,22 +8,50 @@ import {
 import { generateProject } from './core/generator.js';
 import { LlmClient, LlmError } from './core/llm.js';
 import { defaultBuildSystem, planProject } from './core/planner.js';
+import { reviewGeneratedProject } from './core/reviewer.js';
+import {
+  buildSkillsContext,
+  installSkill,
+  loadAllSkills,
+  matchSkills,
+  parseSkill,
+  userSkillsDir,
+} from './core/skills.js';
 import { PLATFORM_LIST, getPlatform } from './core/templates.js';
 import type {
+  AgentRunResult,
   Attachment,
   GenerateResult,
   LlmConfig,
   PlatformId,
   ProjectPlan,
+  ReviewResult,
   SessionMemory,
 } from './core/types.js';
+import type { Skill } from './core/skills.js';
 import { writeProject } from './core/writer.js';
+import { runAgentTask } from './core/agent.js';
 
 export * from './core/types.js';
 export { LlmClient, LlmError } from './core/llm.js';
 export { planProject, fallbackPlan, defaultBuildSystem } from './core/planner.js';
 export { generateProject, cleanCode } from './core/generator.js';
 export { writeProject } from './core/writer.js';
+export { reviewGeneratedProject } from './core/reviewer.js';
+export {
+  runAgentTask,
+  ProjectTools,
+  safeJoin,
+  AgentError,
+} from './core/agent.js';
+export {
+  loadAllSkills,
+  matchSkills,
+  buildSkillsContext,
+  installSkill,
+  parseSkill,
+  userSkillsDir,
+} from './core/skills.js';
 export { PLATFORM_LIST, PLATFORM_TEMPLATES, getPlatform } from './core/templates.js';
 export {
   SessionStore,
@@ -48,6 +76,10 @@ export interface GenerateOptions {
   sessionId?: string;
   /** 会话记忆存储目录 */
   sessionStoreDir?: string;
+  /** 强制注入的技能名（默认按需求自动匹配） */
+  skills?: string[];
+  /** 关闭资深工程师代码审查（默认开启） */
+  noReview?: boolean;
 }
 
 export interface RunResult {
@@ -55,11 +87,15 @@ export interface RunResult {
   result: GenerateResult;
   skeletonOnly: boolean;
   session: SessionMemory;
+  /** 本次注入的专家技能 */
+  skillsUsed: Skill[];
+  /** 代码审查结果（未启用或失败时为 null） */
+  review: ReviewResult | null;
 }
 
 const DEFAULT_OUT_DIR = './generated';
 
-/** EmbedForge 顶层入口：需求（+附件+记忆）→ 规划 → 生成 → 写入 */
+/** EmbedForge 顶层入口：需求（+附件+记忆+技能）→ 规划 → 生成 → 审查 → 写入 */
 export async function runEmbedForge(
   requirement: string,
   llm: LlmConfig,
@@ -68,6 +104,7 @@ export async function runEmbedForge(
   const started = Date.now();
   const client = new LlmClient(llm);
   const attachments = opts.attachments ?? [];
+  const forceSkills = opts.skills ?? [];
 
   // 会话记忆：续接已有会话或新建
   const store = new SessionStore(opts.sessionStoreDir);
@@ -76,8 +113,12 @@ export async function runEmbedForge(
   // 代码生成阶段的额外上下文（文本附件 + 历史；图片只在规划阶段发送）
   const extraContext = buildTextContext(attachments) + memoryBrief;
 
+  const allSkills = loadAllSkills();
+  const skeletonOnly = !!opts.skeletonOnly;
+  const preMatched = skeletonOnly ? [] : matchSkills(requirement, allSkills, { forceSkills });
+
   let plan: ProjectPlan;
-  if (opts.skeletonOnly) {
+  if (skeletonOnly) {
     const platform = (opts.platform ?? 'generic-c') as PlatformId;
     if (!getPlatform(platform)) throw new Error(`不支持的平台: ${platform}`);
     plan = {
@@ -94,12 +135,33 @@ export async function runEmbedForge(
     plan = await planProject(client, requirement, opts.platform, {
       attachments,
       memoryBrief,
+      skillsBrief: buildSkillsContext(preMatched),
     });
   }
 
-  const generated = await generateProject(client, plan, extraContext);
+  // 规划后再匹配一次（modules/pinout 信息更充分），强制注入的技能始终生效
+  const planText = `${plan.summary} ${plan.modules.join(' ')} ${plan.platform}`;
+  const matchedSkills = skeletonOnly
+    ? []
+    : matchSkills(requirement, allSkills, { planText, forceSkills });
+  const skillsContext = buildSkillsContext(matchedSkills);
+
+  const generated = await generateProject(client, plan, extraContext, skillsContext);
+
+  // 资深工程师代码审查：发现问题自动回写修复
+  let review: ReviewResult | null = null;
+  if (!skeletonOnly && !opts.noReview) {
+    review = await reviewGeneratedProject(client, plan, generated.files, buildTextContext(attachments));
+    if (review?.fixedFiles.length) {
+      for (const fixed of review.fixedFiles) {
+        const target = generated.files.find((f) => f.path === fixed.path && f.status === 'ok');
+        if (target) target.content = fixed.content;
+      }
+    }
+  }
+
   const outDir = resolve(opts.outDir ?? DEFAULT_OUT_DIR);
-  const written = writeProject(outDir, plan, generated.files);
+  const written = writeProject(outDir, plan, generated.files, review);
 
   // 记录本轮到记忆并持久化
   recordTurn(session, requirement, plan, attachments.map((a) => a.name));
@@ -116,8 +178,9 @@ export async function runEmbedForge(
     aiGeneratedCount: generated.aiGeneratedCount,
     failedFiles,
     elapsedMs: Date.now() - started,
+    review,
   };
-  return { plan, result, skeletonOnly: !!opts.skeletonOnly, session };
+  return { plan, result, skeletonOnly, session, skillsUsed: matchedSkills, review };
 }
 
 function sanitizeDirName(name: string): string {

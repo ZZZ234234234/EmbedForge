@@ -1,9 +1,9 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { PLATFORM_TEMPLATES } from './templates.js';
-import type { GeneratedFileResult, ProjectPlan } from './types.js';
+import type { GeneratedFileResult, ProjectPlan, ReviewResult } from './types.js';
 
-function buildProjectReadme(plan: ProjectPlan, aiFailed: GeneratedFileResult[]): string {
+function buildProjectReadme(plan: ProjectPlan, aiFailed: GeneratedFileResult[], review?: ReviewResult | null): string {
   const template = PLATFORM_TEMPLATES[plan.platform];
   const lines: string[] = [];
   lines.push(`# ${plan.projectName}`);
@@ -41,6 +41,16 @@ function buildProjectReadme(plan: ProjectPlan, aiFailed: GeneratedFileResult[]):
   lines.push('## 构建与烧录');
   lines.push('');
   lines.push(template.info.buildHint);
+  if (review && review.issues.length) {
+    lines.push('');
+    lines.push('## 📋 AI 代码审查记录');
+    lines.push('');
+    lines.push('资深工程师视角的自动审查结果（已尽力自动修复 high/medium 问题，低级问题请自行确认）：');
+    lines.push('');
+    for (const i of review.issues) {
+      lines.push(`- **[${i.severity}]** \`${i.file}\`：${i.description}`);
+    }
+  }
   if (aiFailed.length) {
     lines.push('');
     lines.push('## ⚠️ 生成提示');
@@ -57,11 +67,12 @@ export interface WriteResult {
   writtenCount: number;
 }
 
-/** 将工程文件写入磁盘，并生成工程 README */
+/** 将工程文件写入磁盘，并生成工程 README（可附带审查记录） */
 export function writeProject(
   outDir: string,
   plan: ProjectPlan,
   files: GeneratedFileResult[],
+  review?: ReviewResult | null,
 ): WriteResult {
   mkdirSync(outDir, { recursive: true });
 
@@ -74,7 +85,7 @@ export function writeProject(
 
   const failed = files.filter((f) => f.status === 'error');
   const readmePath = 'README.md';
-  const readmeContent = buildProjectReadme(plan, failed);
+  const readmeContent = buildProjectReadme(plan, failed, review);
   writeFileSync(join(outDir, readmePath), readmeContent, 'utf8');
 
   return { outDir: relative(process.cwd(), outDir) || outDir, writtenCount: okFiles.length + 1 };

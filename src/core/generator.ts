@@ -5,13 +5,13 @@ import type { GeneratedFileResult, ProjectPlan } from './types.js';
 /** 并发生成上限 */
 const CONCURRENCY = 3;
 
-function buildSystemPrompt(plan: ProjectPlan, alreadyDone: string[], extraContext = ''): string {
+function buildSystemPrompt(plan: ProjectPlan, alreadyDone: string[], extraContext = '', skillsContext = ''): string {
   const template = PLATFORM_TEMPLATES[plan.platform];
   const structureLines = [
     ...template.skeleton.map((f) => `- ${f.path}（骨架，已存在）`),
     ...plan.files.map((f) => `- ${f}（待生成）`),
   ].join('\n');
-  return `你是一名资深嵌入式软件工程师，正在为 "${plan.projectName}" 项目编写代码。
+  return `你是一名有 10 年以上 ARM/MCU 量产项目经验的资深嵌入式软件工程师，正在为 "${plan.projectName}" 项目编写生产级代码。你的代码要能通过严格的技术评审。
 
 【平台】${template.info.name}
 【目标芯片/开发板】${plan.target}
@@ -24,16 +24,19 @@ function buildSystemPrompt(plan: ProjectPlan, alreadyDone: string[], extraContex
       : '无指定，请使用合理默认'
   }
 【工程结构】
-${structureLines}${extraContext}
+${structureLines}${extraContext}${skillsContext}
 
-要求：
+工程标准（评审红线，逐条落实）：
 1. 只输出该文件的完整代码，不要输出任何解释、注释头或多余文字。
-2. 代码符合平台惯例（HAL / ESP-IDF / Arduino API / Pico SDK / Zephyr / MicroPython），生产级质量：错误检查、超时处理、注释精简。
-3. 头文件要带 include guard；C 代码用 C11。
-4. 外部可见接口在头文件中声明；不要重复定义已在其他文件中声明的符号。
-5. 用中英文注释均可，保持简洁。
-6. 不要使用尚未声明的外部库（除平台标准库/框架）。
-7. 若参考资料与你的默认假设冲突，以用户上传的资料（数据手册、原理图、已有代码）为准。`;
+2. 代码符合平台惯例（HAL / ESP-IDF / Arduino API / Pico SDK / Zephyr / MicroPython），C 用 C11。
+3. **驱动与应用分层**：硬件驱动独立成模块（xxx.c/xxx.h），接口在头文件声明并带简要注释；main.c 只做初始化与业务调度。
+4. **错误处理**：所有 HAL/总线调用检查返回值，总线操作带超时；失败路径明确（重试/降级/置错误标志），不允许 void 吞错。
+5. **中断安全**：ISR 只做取数据/置标志/入队，共享变量加 volatile，多字节共享数据用临界区保护；ISR 内禁止延时、printf、malloc。
+6. **时序可靠**：微秒级延时用 DWT/硬件定时器实现（禁止空循环估延时）；传感器时序参数按数据手册，注释注明出处。
+7. **主循环结构**：业务用状态机或非阻塞调度，禁止用大 while+delay 阻塞式写业务逻辑；按键用消抖。
+8. 魔数提取为具名宏（寄存器地址、超时时间、阈值）；头文件带 include guard；外部接口声明与实现一致。
+9. 不要使用尚未声明的外部库（除平台标准库/框架）。
+10. 若参考资料/知识模块与你的默认假设冲突，以用户上传的资料与知识模块为准。`;
 }
 
 /** 清洗模型输出：去除代码围栏和首尾空白 */
@@ -50,11 +53,12 @@ async function generateOneFile(
   filePath: string,
   alreadyDone: string[],
   extraContext = '',
+  skillsContext = '',
 ): Promise<GeneratedFileResult> {
   try {
     const content = await client.chat(
       [
-        { role: 'system', content: buildSystemPrompt(plan, alreadyDone, extraContext) },
+        { role: 'system', content: buildSystemPrompt(plan, alreadyDone, extraContext, skillsContext) },
         { role: 'user', content: `请生成文件：${filePath}` },
       ],
       { temperature: 0.2, maxTokens: 8000 },
@@ -83,11 +87,12 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
-/** 生成全部工程文件（骨架 + AI 文件） */
+/** 生成全部工程文件（骨架 + AI 文件）；skillsContext 会注入每个文件的生成提示 */
 export async function generateProject(
   client: LlmClient,
   plan: ProjectPlan,
   extraContext = '',
+  skillsContext = '',
 ): Promise<{ files: GeneratedFileResult[]; skeletonCount: number; aiGeneratedCount: number }> {
   const template = PLATFORM_TEMPLATES[plan.platform];
   const vars = {
@@ -104,7 +109,7 @@ export async function generateProject(
   const aiFiles = await mapWithConcurrency(
     plan.files.filter((p) => !template.skeleton.some((s) => s.path === p)),
     CONCURRENCY,
-    (filePath) => generateOneFile(client, plan, filePath, plan.files, extraContext),
+    (filePath) => generateOneFile(client, plan, filePath, plan.files, extraContext, skillsContext),
   );
 
   return {

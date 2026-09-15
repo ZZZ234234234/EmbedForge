@@ -85,6 +85,8 @@ export interface GenerateResult {
   failedFiles: GeneratedFileResult[];
   /** 总耗时（毫秒） */
   elapsedMs: number;
+  /** 资深工程师代码审查结果（未启用/失败时为 null） */
+  review?: ReviewResult | null;
 }
 
 /** Web 服务配置 */
@@ -128,4 +130,42 @@ export interface SessionMemory {
   turns: MemoryTurn[];
   /** 最近一次附件文件名（内容不持久化图片 base64，仅记录元信息） */
   attachmentNames: string[];
+}
+
+/* ================= Agent（工具调用循环） ================= */
+
+/** Agent 执行的一步工具调用 */
+export interface AgentStep {
+  tool: string;
+  /** 入参摘要（超长截断） */
+  args: string;
+  ok: boolean;
+  /** 执行结果摘要 */
+  summary: string;
+}
+
+/** Agent 任务执行结果 */
+export interface AgentRunResult {
+  /** 模型给出的最终报告 */
+  report: string;
+  steps: AgentStep[];
+  /** 本次被写入/修改的文件（相对工程目录） */
+  filesChanged: string[];
+  elapsedMs: number;
+  /** 是否因达到最大步数而中止 */
+  truncated: boolean;
+}
+
+/* ================= 代码审查 ================= */
+
+export interface ReviewIssue {
+  file: string;
+  severity: 'high' | 'medium' | 'low';
+  description: string;
+}
+
+/** 审查结果：问题清单 + 修复后的文件 */
+export interface ReviewResult {
+  issues: ReviewIssue[];
+  fixedFiles: GeneratedFileResult[];
 }

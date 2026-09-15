@@ -5,9 +5,22 @@ export type ContentPart =
   | { type: 'text'; text: string }
   | { type: 'image_url'; image_url: { url: string; detail?: 'low' | 'high' | 'auto' } };
 
+/** 模型发起的工具调用请求 */
+export interface ToolCallRequest {
+  id: string;
+  type: 'function';
+  function: { name: string; arguments: string };
+}
+
 export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
+  role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | ContentPart[];
+  /** assistant 消息携带的工具调用请求（agent 循环使用） */
+  tool_calls?: ToolCallRequest[];
+  /** role=tool 时对应被响应的 tool_call id */
+  tool_call_id?: string;
+  /** role=tool 时工具名（部分服务端校验用） */
+  name?: string;
 }
 
 export interface ChatOptions {
@@ -15,6 +28,22 @@ export interface ChatOptions {
   maxTokens?: number;
   /** 期望输出 JSON 对象（自动附加 JSON 约束提示并尝试解析） */
   jsonMode?: boolean;
+}
+
+/** OpenAI function calling 的工具定义 */
+export interface ToolDefinition {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
+/** 带工具调用的响应 */
+export interface ChatWithToolsResult {
+  content: string | null;
+  toolCalls: ToolCallRequest[];
 }
 
 export class LlmError extends Error {
@@ -28,21 +57,9 @@ export class LlmError extends Error {
 export class LlmClient {
   constructor(private readonly cfg: LlmConfig) {}
 
-  async chat(messages: ChatMessage[], opts: ChatOptions = {}): Promise<string> {
-    const { baseURL, apiKey, model, timeoutMs = 120_000 } = this.cfg;
+  private async post(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const { baseURL, apiKey, timeoutMs = 120_000 } = this.cfg;
     const url = baseURL.replace(/\/+$/, '') + '/chat/completions';
-
-    const body: Record<string, unknown> = {
-      model,
-      messages,
-      temperature: opts.temperature ?? 0.4,
-      stream: false,
-    };
-    if (opts.maxTokens) body.max_tokens = opts.maxTokens;
-    if (opts.jsonMode) {
-      body.response_format = { type: 'json_object' };
-      messages = [...messages];
-    }
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -60,12 +77,7 @@ export class LlmClient {
         const text = await res.text().catch(() => '');
         throw new LlmError(`LLM 请求失败 (${res.status}): ${text.slice(0, 300)}`, res.status);
       }
-      const data = (await res.json()) as {
-        choices?: { message?: { content?: string } }[];
-      };
-      const content = data.choices?.[0]?.message?.content;
-      if (content == null) throw new LlmError('LLM 返回内容为空');
-      return content;
+      return (await res.json()) as Record<string, unknown>;
     } catch (err) {
       if (err instanceof LlmError) throw err;
       if (err instanceof Error && err.name === 'AbortError') {
@@ -75,6 +87,65 @@ export class LlmClient {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  async chat(messages: ChatMessage[], opts: ChatOptions = {}): Promise<string> {
+    const body: Record<string, unknown> = {
+      model: this.cfg.model,
+      messages,
+      temperature: opts.temperature ?? 0.4,
+      stream: false,
+    };
+    if (opts.maxTokens) body.max_tokens = opts.maxTokens;
+    if (opts.jsonMode) body.response_format = { type: 'json_object' };
+
+    const data = await this.post(body);
+    const content = (
+      (data.choices as { message?: { content?: string } }[] | undefined)?.[0]?.message?.content
+    );
+    if (content == null) throw new LlmError('LLM 返回内容为空');
+    return content;
+  }
+
+  /** 带工具定义的对话：返回文本与模型请求的工具调用 */
+  async chatWithTools(
+    messages: ChatMessage[],
+    tools: ToolDefinition[],
+    opts: ChatOptions = {},
+  ): Promise<ChatWithToolsResult> {
+    const body: Record<string, unknown> = {
+      model: this.cfg.model,
+      messages,
+      temperature: opts.temperature ?? 0.2,
+      stream: false,
+      tools,
+      tool_choice: 'auto',
+    };
+    if (opts.maxTokens) body.max_tokens = opts.maxTokens;
+
+    let data: Record<string, unknown>;
+    try {
+      data = await this.post(body);
+    } catch (err) {
+      const msg = (err as Error).message;
+      if (err instanceof LlmError && /\(400\)|404|tools|function/i.test(msg)) {
+        throw new LlmError(
+          `当前模型/端点可能不支持 function calling：${msg}\n提示：请换用支持工具调用的模型（如 deepseek-chat、gpt-4o），或使用 generate 命令`,
+          err.status,
+        );
+      }
+      throw err;
+    }
+
+    const message = (
+      data.choices as
+        | { message?: { content?: string; tool_calls?: ToolCallRequest[] } }[]
+        | undefined
+    )?.[0]?.message;
+    return {
+      content: message?.content ?? null,
+      toolCalls: Array.isArray(message?.tool_calls) ? message!.tool_calls! : [],
+    };
   }
 
   /** 请求 JSON 输出；若解析失败返回 null */

@@ -23,6 +23,9 @@ EmbedForge 是一个**嵌入式 AI 开发 Agent**：接入任意 OpenAI 兼容�
 
 - **一句话生成工程**：`embedforge generate "STM32F103 读取 DHT11 温湿度，OLED 显示"`
 - **上传附件 + 多模态**：可带入数据手册、已有代码（文本）和原理图、引脚图（图片）；图片按 vision 多模态发送，AI 直接"看懂"接线图
+- **技能知识库（Skills）**：内置 11 个资深工程师领域知识模块（GPIO/时钟、UART、I2C/SPI、DHT11、SSD1306、消抖与中断安全、ADC/PWM、ESP32 WiFi、FreeRTOS、低功耗、代码审查清单），按需求自动匹配注入生成过程；支持 `embedforge skills add` 安装自定义技能（Markdown）
+- **Agent 文件工具模式**：`embedforge agent` 让 AI 以工具调用方式直接浏览/读取/修改已有工程目录（list_files / read_file / write_file，可选 `--allow-shell` 编译验证），适合在现有项目上迭代
+- **资深工程师代码审查**：生成后自动按"编译性 → 硬件正确性 → 中断安全 → 鲁棒性 → 工程规范"五维审查，发现问题自动回写修复，审查记录写入工程 README（`--no-review` 可关闭）
 - **上下文记忆**：会话本地持久化，可在同一工程上多轮迭代（先建工程，再说"把 LED 改成 PWM 呼吸灯"），自动保持工程名、平台与引脚一致
 - **Agent 式多步流程**：LLM 先解析需求输出结构化规划（平台 / 芯片 / 功能模块 / 引脚分配 / 文件清单），再逐个生成源码文件
 - **内置 8 个平台模板**：STM32 (HAL+GCC) / ESP32 (ESP-IDF) / Arduino (PlatformIO) / 树莓派 Pico (Pico SDK) / AVR (avr-gcc) / MicroPython / Zephyr RTOS / 通用裸机 C
@@ -65,6 +68,30 @@ node dist/cli/index.js generate "ESP32 做一个 WiFi 温湿度服务器"
 
 ```bash
 node dist/cli/index.js generate "DHT11 温湿度监测" --platform stm32 --skeleton-only --out ./dht11-demo
+```
+
+### Agent 模式：在已有工程上干活（v0.4.0）
+
+```bash
+# 让 AI 直接阅读并修改现有工程（自动浏览文件、读源码、改代码）
+node dist/cli/index.js agent "阅读这个工程，把 LED 改成 PWM 呼吸灯" --dir ./my-project
+
+# 允许 AI 运行编译命令自我验证（make / pio run）
+node dist/cli/index.js agent "给工程加按键长按功能并编译验证" --dir . --allow-shell
+```
+
+### 技能知识库（Skills）
+
+```bash
+node dist/cli/index.js skills list          # 查看内置 + 用户技能
+node dist/cli/index.js skills show dht11    # 查看技能内容
+node dist/cli/index.js skills add ./my-skill.md   # 安装自定义技能（Markdown + front-matter）
+```
+
+生成时按需求关键词自动匹配注入，也可强制指定：
+
+```bash
+node dist/cli/index.js generate "STM32 DHT11 温湿度采集" --skill sensor-dht11
 ```
 
 ### Web 界面
@@ -158,10 +185,17 @@ embedforge sessions
 └──────────────────────┬──────────────────────────────┘
                        ▼
 ┌─────────────────────────────────────────────────────┐
+│  资深工程师代码审查 reviewGeneratedProject            │
+│  五维审查（编译性/硬件/中断/鲁棒性/规范）→ 自动修复   │
+└──────────────────────┬──────────────────────────────┘
+                       ▼
+┌─────────────────────────────────────────────────────┐
 │  工程组装 writeProject                               │
-│  写入磁盘 + 生成工程 README（含引脚表/构建说明）      │
+│  写入磁盘 + 生成工程 README（引脚表/构建说明/审查记录）│
 └─────────────────────────────────────────────────────┘
 ```
+
+> Skills 知识模块在「需求解析」与「代码生成」两个阶段都会按触发词自动匹配注入。
 
 ## 📁 生成的工程结构示例（stm32）
 
@@ -180,11 +214,13 @@ my-project/
 
 - [x] 8 大平台模板：STM32 / ESP32 / Arduino / Pico / AVR / MicroPython / Zephyr / 通用 C
 - [x] 附件上传（文本/代码 + 原理图图片多模态）与本地会话记忆、多轮迭代
+- [x] 技能知识库（11 个内置专家技能 + 用户自定义 Markdown 技能，自动匹配注入）
+- [x] Agent 文件工具模式（`embedforge agent`：浏览/读取/修改已有工程，可选 shell 编译验证）
+- [x] 资深工程师代码审查（生成后自动审查并修复，记录写入工程 README）
 - [ ] 支持 Keil MDK / IAR / STM32CubeIDE 工程模板
-- [ ] FreeRTOS / RT-Thread 等 RTOS 选项
+- [ ] FreeRTOS / RT-Thread 等 RTOS 选项（框架已由 freertos-rtos 技能覆盖）
 - [ ] AI 生成代码的编译冒烟测试（GitHub Actions 内置工具链）
 - [ ] 工程模板插件机制（用户自定义平台）
-- [ ] 基于已有工程目录的增量改写（当前为会话级记忆迭代）
 
 ## 🛡️ 官方身份、防伪与维权
 
