@@ -11,7 +11,8 @@ dist/
 .env
 .env.*
 
-# Generated projects (examples only; keep generated output out of git)
+# Generated projects (keep generated output out of git)
+generated/
 examples/**/generated/
 out/
 
