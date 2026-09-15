@@ -7,7 +7,7 @@ const PLAN_SYSTEM_PROMPT = `你是一名资深嵌入式系统架构师。用户�
 必须严格输出以下 JSON 结构（不要输出任何多余文字）：
 {
   "projectName": "工程目录名（小写字母、数字、连字符，如 dht11-oled-monitor）",
-  "platform": "stm32 | esp32 | arduino | generic-c（根据需求推断，无法推断时用 generic-c）",
+  "platform": "stm32 | esp32 | arduino | generic-c | pico | avr | micropython | zephyr（根据需求推断，无法推断时用 generic-c）",
   "target": "目标芯片/开发板型号，如 STM32F103C8T6、ESP32-DevKitC、Arduino Uno",
   "summary": "一句话项目简介",
   "modules": ["功能模块列表，如 DHT11 温湿度采集"],
@@ -17,7 +17,7 @@ const PLAN_SYSTEM_PROMPT = `你是一名资深嵌入式系统架构师。用户�
 }
 
 要求：
-1. files 中必须包含主程序文件（如 main.c / main.cpp）和必要的头文件，路径要与平台惯例一致（stm32 用 Core/Src、Core/Inc；esp32 用 main/；arduino 用 src/；generic-c 用 src/ 与 include/）。
+1. files 中必须包含主程序文件（如 main.c / main.cpp / main.py）和必要的头文件，路径要与平台惯例一致（stm32 用 Core/Src、Core/Inc；esp32 与 zephyr 用 src/ 或 main/；arduino、pico、avr、generic-c 用 src/ 与 include/；micropython 直接在根目录放 main.py / boot.py / config.py）。
 2. 引脚分配要合理，常用外设接口（I2C/SPI/UART）给出典型引脚。
 3. 如果需求没有提到具体平台，优先选 generic-c 或 arduino。`;
 
@@ -62,8 +62,18 @@ export function fallbackPlan(requirement: string, platformHint?: string): Projec
   let platform: PlatformId = 'generic-c';
   if (platformHint && getPlatform(platformHint)) {
     platform = platformHint as PlatformId;
+  } else if (/(micropython|upy\b)/.test(text)) {
+    platform = 'micropython';
+  } else if (/(zephyr)/.test(text)) {
+    platform = 'zephyr';
+  } else if (/(pico|rp2040|rp2350|raspberry\s*pi)/.test(text)) {
+    platform = 'pico';
+  } else if (/(atmega|attiny|\bavr\b|328p)/.test(text)) {
+    platform = 'avr';
   } else if (/(esp32|esp-idf)/.test(text)) {
     platform = 'esp32';
+  } else if (/(esp8266)/.test(text)) {
+    platform = 'arduino';
   } else if (/(stm32|stm\d|hal)/.test(text)) {
     platform = 'stm32';
   } else if (/(arduino|uno|nano|platformio)/.test(text)) {
@@ -83,7 +93,22 @@ export function fallbackPlan(requirement: string, platformHint?: string): Projec
     modules: [requirement],
     pinout: [],
     files: [...template.defaultAiFiles],
-    buildSystem:
-      platform === 'esp32' ? 'cmake' : platform === 'arduino' ? 'platformio' : 'make',
+    buildSystem: defaultBuildSystem(platform),
   };
+}
+
+/** 平台对应的默认构建系统 */
+export function defaultBuildSystem(platform: PlatformId): string {
+  switch (platform) {
+    case 'esp32':
+    case 'pico':
+    case 'zephyr':
+      return 'cmake';
+    case 'arduino':
+      return 'platformio';
+    case 'micropython':
+      return 'none (interpreted)';
+    default:
+      return 'make';
+  }
 }

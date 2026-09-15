@@ -63,7 +63,7 @@ export const UI_HTML = `<!DOCTYPE html>
           <label>平台（可选）</label>
           <select id="platform">
             <option value="">自动推断</option>
-            <option>stm32</option><option>esp32</option><option>arduino</option><option>generic-c</option>
+            <option>stm32</option><option>esp32</option><option>arduino</option><option>pico</option><option>avr</option><option>micropython</option><option>zephyr</option><option>generic-c</option>
           </select>
         </div>
       </div>

@@ -38,6 +38,22 @@ describe('fallbackPlan', () => {
   it('无关键词时用 generic-c', () => {
     expect(fallbackPlan('做一个 LED 闪烁程序').platform).toBe('generic-c');
   });
+  it('识别 pico / RP2040', () => {
+    expect(fallbackPlan('树莓派 pico 读取 ADC').platform).toBe('pico');
+    expect(fallbackPlan('RP2040 板载 LED').platform).toBe('pico');
+  });
+  it('识别 avr / atmega', () => {
+    expect(fallbackPlan('atmega328p 串口通信').platform).toBe('avr');
+  });
+  it('识别 micropython', () => {
+    expect(fallbackPlan('用 micropython 驱动 OLED').platform).toBe('micropython');
+  });
+  it('识别 zephyr', () => {
+    expect(fallbackPlan('zephyr rtos 传感器采集').platform).toBe('zephyr');
+  });
+  it('micropython 优先级高于 esp32 关键词', () => {
+    expect(fallbackPlan('ESP32 上跑 MicroPython 点灯').platform).toBe('micropython');
+  });
   it('platformHint 优先', () => {
     expect(fallbackPlan('随便什么', 'esp32').platform).toBe('esp32');
   });
@@ -46,15 +62,17 @@ describe('fallbackPlan', () => {
     expect(p.files.length).toBeGreaterThan(0);
     expect(p.files).toContain('Core/Src/main.c');
   });
+  it('micropython 默认文件为 Python 脚本', () => {
+    const p = fallbackPlan('micropython 温湿度');
+    expect(p.files).toContain('main.py');
+    expect(p.buildSystem).toBe('none (interpreted)');
+  });
 });
 
 describe('platform list', () => {
-  it('包含四个平台', () => {
-    expect(PLATFORM_LIST.map((p) => p.id).sort()).toEqual([
-      'arduino',
-      'esp32',
-      'generic-c',
-      'stm32',
-    ]);
+  it('包含八个平台', () => {
+    expect(PLATFORM_LIST.map((p) => p.id).sort()).toEqual(
+      ['arduino', 'avr', 'esp32', 'generic-c', 'micropython', 'pico', 'stm32', 'zephyr'].sort(),
+    );
   });
 });

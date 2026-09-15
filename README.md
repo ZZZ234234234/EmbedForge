@@ -23,7 +23,7 @@ EmbedForge 是一个**嵌入式 AI 开发 Agent**：接入任意 OpenAI 兼容�
 
 - **一句话生成工程**：`embedforge generate "STM32F103 读取 DHT11 温湿度，OLED 显示"`
 - **Agent 式多步流程**：LLM 先解析需求输出结构化规划（平台 / 芯片 / 功能模块 / 引脚分配 / 文件清单），再逐个生成源码文件
-- **内置 4 个平台模板**：STM32 (HAL+GCC) / ESP32 (ESP-IDF) / Arduino (PlatformIO) / 通用裸机 C
+- **内置 8 个平台模板**：STM32 (HAL+GCC) / ESP32 (ESP-IDF) / Arduino (PlatformIO) / 树莓派 Pico (Pico SDK) / AVR (avr-gcc) / MicroPython / Zephyr RTOS / 通用裸机 C
 - **本地优先**：支持 Ollama 等本地模型，代码与数据不出本机
 - **离线骨架模式**：`--skeleton-only` 无需 API Key，直接生成可扩展的工程骨架
 - **双入口**：命令行 CLI + 本地 Web 界面（`embedforge web`）
@@ -72,6 +72,14 @@ node dist/cli/index.js web --port 7788
 # 浏览器打开 http://127.0.0.1:7788
 ```
 
+## 📂 示例工程（Examples）
+
+[`examples/`](examples) 提供了三个完整的生成结果样例，可直接对照查看「一句话需求 → 完整工程」的产出：
+
+- **Arduino**：LED 闪烁 + 按键消抖切换频率（PlatformIO）
+- **STM32**：DHT11 单总线 + 软件 I2C 驱动 SSD1306 OLED + 串口（HAL + GCC）
+- **MicroPython**：DHT11 + OLED 温湿度站，异常自动重试（无需交叉编译）
+
 ## 🧩 支持的平台
 
 | 平台 ID | 名称 | 构建系统 |
@@ -79,6 +87,10 @@ node dist/cli/index.js web --port 7788
 | `stm32` | STM32 (HAL, GCC) | Makefile + arm-none-eabi-gcc |
 | `esp32` | ESP32 (ESP-IDF) | CMake + idf.py |
 | `arduino` | Arduino (PlatformIO) | platformio.ini + pio |
+| `pico` | 树莓派 Pico / RP2040 / RP2350 | Pico SDK + CMake |
+| `avr` | AVR / ATmega 裸机 | avr-gcc + Makefile + avrdude |
+| `micropython` | MicroPython（无需交叉编译） | 脚本直传（mpremote / Thonny） |
+| `zephyr` | Zephyr RTOS | west + CMake |
 | `generic-c` | 通用裸机 C | Makefile |
 
 ## 🔧 接入任意 API
@@ -131,14 +143,27 @@ my-project/
 
 ## 🗺️ Roadmap
 
-- [ ] 支持 Keil MDK / IAR 工程模板
+- [x] 8 大平台模板：STM32 / ESP32 / Arduino / Pico / AVR / MicroPython / Zephyr / 通用 C
+- [ ] 支持 Keil MDK / IAR / STM32CubeIDE 工程模板
+- [ ] FreeRTOS / RT-Thread 等 RTOS 选项
 - [ ] AI 生成代码的编译冒烟测试（GitHub Actions 内置工具链）
 - [ ] 工程模板插件机制（用户自定义平台）
 - [ ] 增量生成：在已有工程上添加功能
 
+## 🛡️ 官方身份、防伪与维权
+
+- 本项目源代码遵循 [MIT License](LICENSE) 开放，但 **EmbedForge** 名称、Logo、作者署名与“官方版本”标识不得被第三方用于冒充官方发布；分发修改版须明确标注为第三方修改，边界详见 [TRADEMARKS.md](TRADEMARKS.md)
+- 官方代码仓库：<https://github.com/ZZZ234234234/EmbedForge>，官方安装包仅通过本仓库 GitHub Releases 发布
+- 发现删除版权或许可声明、伪造官方安装包、冒充官方发布渠道、盗用作者署名等情况，请保留页面链接、账号信息、截图、文件样本与发现时间后联系作者，作者保留通过平台投诉、侵权通知、下架申请等合法途径维权的权利
+
+## 📮 联系方式
+
+- 作者：爱吃孜然芥末（GitHub：ZZZ234234234），嘉兴大学通信专业学生独立制作，不代表学校官方开发、授权或背书
+- 邮箱：<2014546082@qq.com>（使用问题、合作与疑似仿冒线索）
+
 ## 📜 License
 
-[MIT](LICENSE) © 2026 ZZZ234234234
+[MIT](LICENSE) © 2026 ZZZ234234234（爱吃孜然芥末）
 
 ---
 
@@ -148,11 +173,13 @@ my-project/
 
 **EmbedForge** is an **AI embedded development agent**. It connects to any OpenAI-compatible LLM API — you describe a requirement in one sentence, and it plans, generates, and assembles a complete, buildable embedded engineering project.
 
-- Built-in platform templates: STM32 (HAL + GCC), ESP32 (ESP-IDF), Arduino (PlatformIO), generic bare-metal C
+- Built-in platform templates: STM32 (HAL + GCC), ESP32 (ESP-IDF), Arduino (PlatformIO), Raspberry Pi Pico (Pico SDK), AVR (avr-gcc), MicroPython, Zephyr RTOS, generic bare-metal C
 - Local-first: works with Ollama, data stays on your machine
 - Offline skeleton mode: no API key needed to scaffold a project
 - CLI + local Web UI (`embedforge web`)
 - Any OpenAI-compatible endpoint (`--base-url` / `--model` / `--api-key` or `EMBEDFORGE_API_KEY`)
+
+**Author:** 爱吃孜然芥末 (GitHub: ZZZ234234234), an independent student project. Contact: 2014546082@qq.com. Brand identity and anti-impersonation terms: see [TRADEMARKS.md](TRADEMARKS.md).
 
 ```bash
 npm install && npm run build

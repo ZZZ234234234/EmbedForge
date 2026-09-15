@@ -1,14 +1,14 @@
 import { resolve } from 'node:path';
 import { generateProject } from './core/generator.js';
 import { LlmClient, LlmError } from './core/llm.js';
-import { planProject } from './core/planner.js';
+import { defaultBuildSystem, planProject } from './core/planner.js';
 import { PLATFORM_LIST, getPlatform } from './core/templates.js';
 import type { GenerateResult, LlmConfig, PlatformId, ProjectPlan } from './core/types.js';
 import { writeProject } from './core/writer.js';
 
 export * from './core/types.js';
 export { LlmClient, LlmError } from './core/llm.js';
-export { planProject, fallbackPlan } from './core/planner.js';
+export { planProject, fallbackPlan, defaultBuildSystem } from './core/planner.js';
 export { generateProject, cleanCode } from './core/generator.js';
 export { writeProject } from './core/writer.js';
 export { PLATFORM_LIST, PLATFORM_TEMPLATES, getPlatform } from './core/templates.js';
@@ -51,8 +51,7 @@ export async function runEmbedForge(
       modules: [],
       pinout: [],
       files: [],
-      buildSystem:
-        platform === 'esp32' ? 'cmake' : platform === 'arduino' ? 'platformio' : 'make',
+      buildSystem: defaultBuildSystem(platform),
     };
   } else {
     plan = await planProject(client, requirement, opts.platform);

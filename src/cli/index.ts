@@ -17,14 +17,14 @@ const program = new Command();
 program
   .name('embedforge')
   .description('嵌入式 AI 开发 Agent：描述需求，生成完整工程文件')
-  .version('0.1.0');
+  .version('0.2.0');
 
 program
   .command('generate')
   .description('根据需求生成嵌入式工程')
   .argument('<requirement>', '开发需求描述，例如 "STM32F103 读取 DHT11 温湿度，OLED 显示"')
   .option('-o, --out <dir>', '输出目录（默认 ./generated）')
-  .option('-p, --platform <id>', '强制指定平台：stm32 | esp32 | arduino | generic-c')
+  .option('-p, --platform <id>', '强制指定平台：stm32 | esp32 | arduino | pico | avr | micropython | zephyr | generic-c')
   .option('--provider <name>', `API 服务商预设：${Object.keys(PROVIDER_PRESETS).join(' | ')}（默认 deepseek）`)
   .option('--base-url <url>', 'OpenAI 兼容 API 端点（覆盖预设）')
   .option('--model <model>', '模型名（覆盖预设）')

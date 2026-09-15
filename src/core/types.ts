@@ -1,5 +1,13 @@
 /** 支持的嵌入式平台标识 */
-export type PlatformId = 'stm32' | 'esp32' | 'arduino' | 'generic-c';
+export type PlatformId =
+  | 'stm32'
+  | 'esp32'
+  | 'arduino'
+  | 'generic-c'
+  | 'pico'
+  | 'avr'
+  | 'micropython'
+  | 'zephyr';
 
 /** 平台元信息 */
 export interface PlatformInfo {
