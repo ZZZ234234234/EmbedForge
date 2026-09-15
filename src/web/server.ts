@@ -1,15 +1,18 @@
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { runEmbedForge } from '../index.js';
+import { attachmentFromContent, runEmbedForge } from '../index.js';
 import type { LlmConfig, WebServerConfig } from '../core/types.js';
 import { UI_HTML } from './ui.js';
+
+/** 请求体上限：图片 base64 后较大，放宽到 12MB */
+const MAX_BODY = 12 * 1024 * 1024;
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     let data = '';
     req.on('data', (chunk: Buffer) => {
       data += chunk;
-      if (data.length > 2 * 1024 * 1024) {
-        reject(new Error('请求体过大'));
+      if (data.length > MAX_BODY) {
+        reject(new Error('请求体过大（超过 12MB）'));
         req.destroy();
       }
     });
@@ -22,6 +25,12 @@ function sendJson(res: ServerResponse, status: number, obj: unknown): void {
   const body = JSON.stringify(obj);
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(body);
+}
+
+interface RawAttachment {
+  name?: string;
+  kind?: 'text' | 'image';
+  content?: string;
 }
 
 /** 启动 EmbedForge Web UI（本地服务） */
@@ -45,23 +54,31 @@ export function startWebServer(
           model?: string;
           apiKey?: string;
           platform?: string;
+          sessionId?: string;
+          attachments?: RawAttachment[];
         };
         const requirement = (body.requirement ?? '').trim();
         if (!requirement) {
           sendJson(res, 400, { error: '缺少需求描述' });
           return;
         }
+        const attachments = (body.attachments ?? [])
+          .filter((a) => a.name && a.content && a.kind)
+          .map((a) => attachmentFromContent(a.name!, a.content!, a.kind!));
+
         const llm: LlmConfig = {
           provider: 'web',
           baseURL: body.baseURL?.trim() || defaults.baseURL || 'http://localhost:11434/v1',
           model: body.model?.trim() || defaults.model || 'qwen2.5:7b',
           apiKey: body.apiKey?.trim() || defaults.apiKey || undefined,
         };
-        const { plan, result } = await runEmbedForge(requirement, llm, {
+        const { plan, result, session } = await runEmbedForge(requirement, llm, {
           platform: body.platform || undefined,
           outDir: './generated',
+          attachments,
+          sessionId: body.sessionId,
         });
-        sendJson(res, 200, { plan, result });
+        sendJson(res, 200, { plan, result, session: { id: session.id, turns: session.turns.length } });
         return;
       }
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });

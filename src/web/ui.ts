@@ -9,7 +9,7 @@ export const UI_HTML = `<!DOCTYPE html>
   :root { --bg:#0f1115; --panel:#171a21; --border:#262b36; --text:#e6e9ef; --muted:#8b93a3; --accent:#4f8cff; --ok:#3fb96f; --err:#e5534b; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font:14px/1.6 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif; }
-  header { padding:18px 28px; border-bottom:1px solid var(--border); display:flex; align-items:baseline; gap:14px; }
+  header { padding:18px 28px; border-bottom:1px solid var(--border); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
   header h1 { margin:0; font-size:18px; }
   header span { color:var(--muted); font-size:12px; }
   main { max-width:980px; margin:0 auto; padding:22px 28px 60px; }
@@ -19,10 +19,11 @@ export const UI_HTML = `<!DOCTYPE html>
   .panel h2 { margin:0 0 10px; font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
   label { display:block; font-size:12px; color:var(--muted); margin:10px 0 4px; }
   input, textarea, select { width:100%; background:#0d0f14; border:1px solid var(--border); color:var(--text); border-radius:7px; padding:9px 11px; font:inherit; }
-  textarea { min-height:130px; resize:vertical; }
+  textarea { min-height:110px; resize:vertical; }
   input:focus, textarea:focus, select:focus { outline:none; border-color:var(--accent); }
   .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   button { background:var(--accent); color:#fff; border:0; border-radius:7px; padding:10px 18px; font-size:14px; cursor:pointer; margin-top:14px; }
+  button.ghost { background:transparent; border:1px solid var(--border); color:var(--muted); padding:6px 12px; margin-top:0; font-size:12px; }
   button:disabled { opacity:.5; cursor:not-allowed; }
   .hint { font-size:12px; color:var(--muted); margin-top:8px; }
   .status { margin-top:12px; font-size:13px; min-height:20px; }
@@ -40,18 +41,31 @@ export const UI_HTML = `<!DOCTYPE html>
   table { width:100%; border-collapse:collapse; margin-top:6px; font-size:12.5px; }
   td, th { border:1px solid var(--border); padding:5px 8px; text-align:left; }
   th { color:var(--muted); font-weight:500; }
+  .att { display:flex; align-items:center; gap:8px; padding:6px 9px; border:1px solid var(--border); border-radius:7px; margin-top:6px; font-size:12.5px; }
+  .att img { width:34px; height:34px; object-fit:cover; border-radius:5px; border:1px solid var(--border); }
+  .att .meta { flex:1; min-width:0; }
+  .att .meta .n { font-family:ui-monospace,Consolas,monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .att .rm { color:var(--err); cursor:pointer; border:0; background:none; margin:0; padding:2px 6px; }
+  .sessbar { display:flex; align-items:center; gap:10px; font-size:12px; color:var(--muted); margin-top:10px; }
+  .pill { background:#223047; color:#9db8e8; border-radius:99px; padding:2px 10px; font-family:ui-monospace,Consolas,monospace; }
 </style>
 </head>
 <body>
 <header>
   <h1>⚙ EmbedForge</h1>
-  <span>嵌入式 AI 开发 Agent：描述需求，生成完整工程</span>
+  <span>嵌入式 AI 开发 Agent：描述需求 + 上传资料，生成完整工程（支持多轮记忆）</span>
 </header>
 <main>
   <div class="grid">
     <section class="panel">
       <h2>需求描述</h2>
-      <textarea id="req" placeholder="例如：STM32F103 读取 DHT11 温湿度，通过 I2C 在 OLED 上显示，串口打印日志"></textarea>
+      <textarea id="req" placeholder="例如：STM32F103 读取 DHT11 温湿度，通过 I2C 在 OLED 上显示，串口打印日志。第二轮可直接说：把 LED 改成 PWM 呼吸灯"></textarea>
+
+      <label>附件（数据手册 / 已有代码 / 原理图图片，可多选）</label>
+      <input type="file" id="attachInput" multiple accept=".txt,.md,.c,.h,.cpp,.hpp,.py,.ini,.json,.yaml,.yml,.toml,.cfg,.csv,.log,.ioc,.png,.jpg,.jpeg,.webp,.gif" />
+      <div id="attList"></div>
+      <div class="hint">文本/代码文件直接读入上下文；图片按多模态发送（需视觉模型，如 gpt-4o、qwen-vl、llava）。单张图片 ≤5MB。</div>
+
       <label>API 端点（OpenAI 兼容）</label>
       <input id="base" placeholder="https://api.deepseek.com/v1" />
       <div class="row">
@@ -70,12 +84,15 @@ export const UI_HTML = `<!DOCTYPE html>
       <label>API Key（仅在本地服务上运行，不会外传）</label>
       <input id="key" type="password" placeholder="sk-..." />
       <button id="run">生成工程</button>
-      <div class="hint">生成的文件会写入服务器工作目录的 generated/ 下；LLM 不可用时可用“仅骨架模式”。</div>
+      <div class="sessbar">
+        <span id="sessInfo">新会话</span>
+        <button class="ghost" id="newSess">开启新会话</button>
+      </div>
       <div class="status" id="status"></div>
     </section>
     <section class="panel">
       <h2>工程规划</h2>
-      <div class="plan" id="plan"><span style="color:var(--muted)">提交需求后，这里会显示 AI 生成的工程规划。</span></div>
+      <div class="plan" id="plan"><span style="color:var(--muted)">提交需求后，这里会显示 AI 生成的工程规划；同一会话内会记住之前的工程。</span></div>
     </section>
   </div>
   <section class="panel" style="margin-top:16px">
@@ -86,14 +103,57 @@ export const UI_HTML = `<!DOCTYPE html>
 </main>
 <script>
   function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  var attachments = [];   // {name, kind, content}
+  var sessionId = null;   // 会话记忆 id
   var runBtn = document.getElementById('run');
   var statusEl = document.getElementById('status');
+  var sessInfo = document.getElementById('sessInfo');
+
+  // ---- 附件读取 ----
+  document.getElementById('attachInput').addEventListener('change', function(e){
+    var files = Array.prototype.slice.call(e.target.files || []);
+    files.forEach(function(f){
+      var isImg = /^image\\//.test(f.type);
+      var reader = new FileReader();
+      reader.onload = function(){
+        attachments.push({ name:f.name, kind: isImg ? 'image' : 'text', content: reader.result });
+        renderAttachments();
+      };
+      if (isImg) reader.readAsDataURL(f); else reader.readAsText(f);
+    });
+    e.target.value = '';
+  });
+
+  function renderAttachments(){
+    var el = document.getElementById('attList');
+    el.innerHTML = '';
+    attachments.forEach(function(a, i){
+      var div = document.createElement('div');
+      div.className = 'att';
+      var thumb = a.kind === 'image' ? '<img src="' + a.content + '" alt=""/>' : '';
+      div.innerHTML = thumb + '<div class="meta"><div class="n">' + esc(a.name) + '</div><div>' + (a.kind === 'image' ? '图片' : '文本') + '</div></div>';
+      var rm = document.createElement('button');
+      rm.className = 'rm'; rm.textContent = '移除';
+      rm.addEventListener('click', function(){ attachments.splice(i,1); renderAttachments(); });
+      div.appendChild(rm);
+      el.appendChild(div);
+    });
+  }
+
+  document.getElementById('newSess').addEventListener('click', function(){
+    sessionId = null;
+    attachments = [];
+    renderAttachments();
+    sessInfo.textContent = '新会话';
+    statusEl.textContent = '';
+  });
+
   runBtn.addEventListener('click', async function(){
     var req = document.getElementById('req').value.trim();
     if (!req){ statusEl.className='status err'; statusEl.textContent='请先描述需求'; return; }
     runBtn.disabled = true;
     statusEl.className = 'status';
-    statusEl.textContent = 'AI 正在规划工程结构…';
+    statusEl.textContent = 'AI 正在结合附件与历史记忆规划工程…';
     try {
       var res = await fetch('/api/generate', {
         method:'POST',
@@ -103,13 +163,17 @@ export const UI_HTML = `<!DOCTYPE html>
           baseURL: document.getElementById('base').value.trim(),
           model: document.getElementById('model').value.trim(),
           apiKey: document.getElementById('key').value.trim(),
-          platform: document.getElementById('platform').value
+          platform: document.getElementById('platform').value,
+          attachments: attachments,
+          sessionId: sessionId
         })
       });
       var data = await res.json();
       if (!res.ok){ throw new Error(data.error || '生成失败'); }
+      sessionId = data.session.id;
+      sessInfo.innerHTML = '当前会话 <span class="pill">' + esc(sessionId) + '</span> 第 ' + data.session.turns + ' 轮';
       statusEl.className = 'status ok';
-      statusEl.textContent = '完成：' + data.result.projectName + '（骨架 ' + data.result.skeletonCount + ' 个 / AI 生成 ' + data.result.aiGeneratedCount + ' 个）已写入 ' + data.result.outDir;
+      statusEl.textContent = '完成：' + data.result.projectName + '（骨架 ' + data.result.skeletonCount + ' / AI 生成 ' + data.result.aiGeneratedCount + '）已写入 ' + data.result.outDir + '；可继续提迭代需求';
       renderPlan(data.plan);
       renderFiles(data.result.files);
     } catch (e){
@@ -139,11 +203,10 @@ export const UI_HTML = `<!DOCTYPE html>
     files.forEach(function(f){
       var div = document.createElement('div');
       div.className = 'file';
-      var tag = f.status === 'ok' ? (f.source !== undefined ? '<span class="tag">' + esc(f.source) + '</span>' : '') : '<span class="tag fail">失败</span>';
+      var tag = f.status === 'ok' ? '' : '<span class="tag fail">失败</span>';
       div.innerHTML = '<span class="name">' + esc(f.path) + '</span>' + tag;
       div.addEventListener('click', function(){
-        if (f.status === 'error'){ codeEl.textContent = '生成失败：' + (f.error || '未知错误'); }
-        else { codeEl.textContent = f.content; }
+        codeEl.textContent = f.status === 'error' ? ('生成失败：' + (f.error || '未知错误')) : f.content;
         codeEl.style.display = 'block';
       });
       el.appendChild(div);

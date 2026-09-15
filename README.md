@@ -22,6 +22,8 @@ EmbedForge 是一个**嵌入式 AI 开发 Agent**：接入任意 OpenAI 兼容�
 ## ✨ 特性
 
 - **一句话生成工程**：`embedforge generate "STM32F103 读取 DHT11 温湿度，OLED 显示"`
+- **上传附件 + 多模态**：可带入数据手册、已有代码（文本）和原理图、引脚图（图片）；图片按 vision 多模态发送，AI 直接"看懂"接线图
+- **上下文记忆**：会话本地持久化，可在同一工程上多轮迭代（先建工程，再说"把 LED 改成 PWM 呼吸灯"），自动保持工程名、平台与引脚一致
 - **Agent 式多步流程**：LLM 先解析需求输出结构化规划（平台 / 芯片 / 功能模块 / 引脚分配 / 文件清单），再逐个生成源码文件
 - **内置 8 个平台模板**：STM32 (HAL+GCC) / ESP32 (ESP-IDF) / Arduino (PlatformIO) / 树莓派 Pico (Pico SDK) / AVR (avr-gcc) / MicroPython / Zephyr RTOS / 通用裸机 C
 - **本地优先**：支持 Ollama 等本地模型，代码与数据不出本机
@@ -105,6 +107,39 @@ EmbedForge 使用 **OpenAI Chat Completions 兼容协议**，只需三个参数�
 
 > API Key 可通过 `--api-key` 或环境变量 `EMBEDFORGE_API_KEY` 提供，**不会写入任何文件**。
 
+## 📎 附件与上下文记忆
+
+### 上传文件 / 图片（CLI）
+
+`--attach` 可重复指定，文本类（`.c/.h/.py/.md/.txt/.ini/.json/…`）直接读入上下文，图片类（`.png/.jpg/.webp/.gif`）按多模态发送：
+
+```bash
+embedforge generate "按这份数据手册和原理图生成驱动" \
+  --attach ./datasheet.md --attach ./schematic.png \
+  --provider openai --model gpt-4o-mini
+```
+
+> 图片识别需要**多模态（视觉）模型**，如 `gpt-4o`、`qwen-vl`、`llava`；纯文本模型（如 deepseek-chat）无法读图，但文本附件照常生效。
+
+### 多轮记忆（在同一工程上迭代）
+
+每次生成会返回一个**会话 id**，用 `--session` 续接即可让 AI 记住之前的需求、工程结构和引脚约定：
+
+```bash
+# 第一轮，返回会话 id：s-xxxx
+embedforge generate "STM32 点灯" --session ""
+# 第二轮：在原工程基础上迭代
+embedforge generate "再加一个按键中断控制亮度" --session s-xxxx
+# 查看本地所有会话
+embedforge sessions
+```
+
+会话保存在本地 `.embedforge/sessions/`（默认保留最近 10 轮），不上传云端。
+
+### Web 界面上传
+
+`embedforge web` 打开后，可直接多选文件/图片、查看缩略图、移除附件；页面顶部显示当前会话与轮次，点「开启新会话」清空上下文。
+
 ## 🧠 工作原理
 
 ```text
@@ -144,11 +179,12 @@ my-project/
 ## 🗺️ Roadmap
 
 - [x] 8 大平台模板：STM32 / ESP32 / Arduino / Pico / AVR / MicroPython / Zephyr / 通用 C
+- [x] 附件上传（文本/代码 + 原理图图片多模态）与本地会话记忆、多轮迭代
 - [ ] 支持 Keil MDK / IAR / STM32CubeIDE 工程模板
 - [ ] FreeRTOS / RT-Thread 等 RTOS 选项
 - [ ] AI 生成代码的编译冒烟测试（GitHub Actions 内置工具链）
 - [ ] 工程模板插件机制（用户自定义平台）
-- [ ] 增量生成：在已有工程上添加功能
+- [ ] 基于已有工程目录的增量改写（当前为会话级记忆迭代）
 
 ## 🛡️ 官方身份、防伪与维权
 
@@ -175,6 +211,8 @@ my-project/
 
 - Built-in platform templates: STM32 (HAL + GCC), ESP32 (ESP-IDF), Arduino (PlatformIO), Raspberry Pi Pico (Pico SDK), AVR (avr-gcc), MicroPython, Zephyr RTOS, generic bare-metal C
 - Local-first: works with Ollama, data stays on your machine
+- Attachments: feed in datasheets / existing code (text) and schematics / pinout images (vision multimodal)
+- Session memory: iterate on the same project across turns (`--session <id>`), kept locally
 - Offline skeleton mode: no API key needed to scaffold a project
 - CLI + local Web UI (`embedforge web`)
 - Any OpenAI-compatible endpoint (`--base-url` / `--model` / `--api-key` or `EMBEDFORGE_API_KEY`)

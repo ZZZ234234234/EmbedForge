@@ -1,6 +1,6 @@
 {
   "name": "embedforge",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "AI embedded development agent: describe your requirement, get a complete embedded engineering project. 嵌入式 AI 开发 Agent：描述需求，生成完整工程文件。",
   "type": "module",
   "bin": {

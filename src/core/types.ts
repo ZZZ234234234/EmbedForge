@@ -92,3 +92,40 @@ export interface WebServerConfig {
   port: number;
   host: string;
 }
+
+/** 附件类型：文本文件或图片 */
+export type AttachmentKind = 'text' | 'image';
+
+/** 上传给 AI 的附件（文件 / 图片） */
+export interface Attachment {
+  /** 原始文件名 */
+  name: string;
+  kind: AttachmentKind;
+  /** 文本类附件的内容 */
+  text?: string;
+  /** 图片类附件的 data URL（data:image/png;base64,...） */
+  dataUrl?: string;
+  /** 文件大小（字节） */
+  size: number;
+}
+
+/** 一轮对话记录（用于上下文记忆） */
+export interface MemoryTurn {
+  /** 用户需求/指令 */
+  requirement: string;
+  /** 当时生成的工程规划摘要 */
+  planSummary: string;
+  /** 当时生成/修改的文件路径 */
+  files: string[];
+  at: string;
+}
+
+/** 会话记忆：跨多轮保留需求、规划与附件信息 */
+export interface SessionMemory {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  turns: MemoryTurn[];
+  /** 最近一次附件文件名（内容不持久化图片 base64，仅记录元信息） */
+  attachmentNames: string[];
+}

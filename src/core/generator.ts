@@ -5,7 +5,7 @@ import type { GeneratedFileResult, ProjectPlan } from './types.js';
 /** 并发生成上限 */
 const CONCURRENCY = 3;
 
-function buildSystemPrompt(plan: ProjectPlan, alreadyDone: string[]): string {
+function buildSystemPrompt(plan: ProjectPlan, alreadyDone: string[], extraContext = ''): string {
   const template = PLATFORM_TEMPLATES[plan.platform];
   const structureLines = [
     ...template.skeleton.map((f) => `- ${f.path}（骨架，已存在）`),
@@ -24,15 +24,16 @@ function buildSystemPrompt(plan: ProjectPlan, alreadyDone: string[]): string {
       : '无指定，请使用合理默认'
   }
 【工程结构】
-${structureLines}
+${structureLines}${extraContext}
 
 要求：
 1. 只输出该文件的完整代码，不要输出任何解释、注释头或多余文字。
-2. 代码符合平台惯例（HAL / ESP-IDF / Arduino API），生产级质量：错误检查、超时处理、注释精简。
+2. 代码符合平台惯例（HAL / ESP-IDF / Arduino API / Pico SDK / Zephyr / MicroPython），生产级质量：错误检查、超时处理、注释精简。
 3. 头文件要带 include guard；C 代码用 C11。
 4. 外部可见接口在头文件中声明；不要重复定义已在其他文件中声明的符号。
 5. 用中英文注释均可，保持简洁。
-6. 不要使用尚未声明的外部库（除平台标准库/框架）。`;
+6. 不要使用尚未声明的外部库（除平台标准库/框架）。
+7. 若参考资料与你的默认假设冲突，以用户上传的资料（数据手册、原理图、已有代码）为准。`;
 }
 
 /** 清洗模型输出：去除代码围栏和首尾空白 */
@@ -48,11 +49,12 @@ async function generateOneFile(
   plan: ProjectPlan,
   filePath: string,
   alreadyDone: string[],
+  extraContext = '',
 ): Promise<GeneratedFileResult> {
   try {
     const content = await client.chat(
       [
-        { role: 'system', content: buildSystemPrompt(plan, alreadyDone) },
+        { role: 'system', content: buildSystemPrompt(plan, alreadyDone, extraContext) },
         { role: 'user', content: `请生成文件：${filePath}` },
       ],
       { temperature: 0.2, maxTokens: 8000 },
@@ -85,6 +87,7 @@ async function mapWithConcurrency<T, R>(
 export async function generateProject(
   client: LlmClient,
   plan: ProjectPlan,
+  extraContext = '',
 ): Promise<{ files: GeneratedFileResult[]; skeletonCount: number; aiGeneratedCount: number }> {
   const template = PLATFORM_TEMPLATES[plan.platform];
   const vars = {
@@ -101,7 +104,7 @@ export async function generateProject(
   const aiFiles = await mapWithConcurrency(
     plan.files.filter((p) => !template.skeleton.some((s) => s.path === p)),
     CONCURRENCY,
-    (filePath) => generateOneFile(client, plan, filePath, plan.files),
+    (filePath) => generateOneFile(client, plan, filePath, plan.files, extraContext),
   );
 
   return {

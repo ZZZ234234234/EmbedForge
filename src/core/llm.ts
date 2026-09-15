@@ -1,8 +1,13 @@
 import type { LlmConfig } from './types.js';
 
+/** 多模态内容块：文本或图片（OpenAI vision 兼容格式） */
+export type ContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string; detail?: 'low' | 'high' | 'auto' } };
+
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
-  content: string;
+  content: string | ContentPart[];
 }
 
 export interface ChatOptions {

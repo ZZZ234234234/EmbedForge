@@ -1,6 +1,7 @@
 import type { LlmClient } from './llm.js';
+import { buildUserMessage } from './context.js';
 import { getPlatform } from './templates.js';
-import type { PlatformId, ProjectPlan } from './types.js';
+import type { Attachment, PlatformId, ProjectPlan } from './types.js';
 
 const PLAN_SYSTEM_PROMPT = `你是一名资深嵌入式系统架构师。用户会给出一个嵌入式开发需求，你需要输出一份结构化的工程规划 JSON，用于驱动代码生成。
 
@@ -21,17 +22,26 @@ const PLAN_SYSTEM_PROMPT = `你是一名资深嵌入式系统架构师。用户�
 2. 引脚分配要合理，常用外设接口（I2C/SPI/UART）给出典型引脚。
 3. 如果需求没有提到具体平台，优先选 generic-c 或 arduino。`;
 
+/** 规划阶段的额外上下文 */
+export interface PlanContext {
+  attachments?: Attachment[];
+  /** 会话历史摘要（buildMemoryBrief 生成） */
+  memoryBrief?: string;
+}
+
 /** 用 LLM 解析需求为工程规划；失败时回退到规则推断 */
 export async function planProject(
   client: LlmClient,
   requirement: string,
   platformHint?: string,
+  ctx: PlanContext = {},
 ): Promise<ProjectPlan> {
+  const attachments = ctx.attachments ?? [];
   try {
     const plan = await client.chatJson<ProjectPlan>(
       [
-        { role: 'system', content: PLAN_SYSTEM_PROMPT },
-        { role: 'user', content: `开发需求：${requirement}` },
+        { role: 'system', content: PLAN_SYSTEM_PROMPT + (ctx.memoryBrief ?? '') },
+        buildUserMessage(requirement, attachments),
       ],
       { temperature: 0.2, maxTokens: 2000 },
     );
