@@ -1,0 +1,50 @@
+{
+  "name": "embedforge",
+  "version": "0.1.0",
+  "description": "AI embedded development agent: describe your requirement, get a complete embedded engineering project. 嵌入式 AI 开发 Agent：描述需求，生成完整工程文件。",
+  "type": "module",
+  "bin": {
+    "embedforge": "dist/cli/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "embedded",
+    "embedded-systems",
+    "ai-agent",
+    "llm",
+    "stm32",
+    "esp32",
+    "arduino",
+    "code-generation",
+    "openai-compatible",
+    "typescript",
+    "cli",
+    "local-first"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Local data & secrets
+.embedforge/
+*.local.json
+.env
+.env.*
+
+# Generated projects (examples only; keep generated output out of git)
+examples/**/generated/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
