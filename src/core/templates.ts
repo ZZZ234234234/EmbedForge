@@ -1,4 +1,100 @@
 import type { PlatformId, PlatformInfo } from './types.js';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+
+/** 模板根目录：项目根下的 templates/（dist/core/templates.js → ../../templates） */
+const TEMPLATES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'templates');
+
+/** 递归读取目录下所有文件，返回相对路径 + 内容 */
+function loadDirFiles(dir: string): { path: string; content: string }[] {
+  const out: { path: string; content: string }[] = [];
+  const walk = (d: string, base: string): void => {
+    for (const entry of readdirSync(d)) {
+      const full = join(d, entry);
+      const rel = base ? `${base}/${entry}` : entry;
+      if (statSync(full).isDirectory()) walk(full, rel);
+      else out.push({ path: rel, content: readFileSync(full, 'utf8') });
+    }
+  };
+  walk(dir, '');
+  return out;
+}
+
+/** 外设驱动模板信息 */
+export interface DriverTemplate {
+  id: string;
+  name: string;
+  keywords: string[];
+  /** 驱动文件（相对于 templates/drivers/stm32/），生成时放到 Drivers/BSP/ 下 */
+  files: string[];
+}
+
+/** STM32 外设驱动注册表（AI 不重写，直接用模板） */
+export const STM32_DRIVERS: DriverTemplate[] = [
+  {
+    id: 'dht11', name: 'DHT11/DHT22 温湿度',
+    keywords: ['dht11', 'dht22', '温湿度', '单总线', 'am2302', '湿度'],
+    files: ['dht11.h', 'dht11.c'],
+  },
+  {
+    id: 'ssd1306', name: 'SSD1306 OLED 显示',
+    keywords: ['oled', 'ssd1306', 'sh1106', '显示屏', '屏幕', '显示'],
+    files: ['ssd1306.h', 'ssd1306.c'],
+  },
+  {
+    id: 'button', name: '按键消抖',
+    keywords: ['按键', '按钮', '消抖', 'button', 'key', 'exti', '开关'],
+    files: ['button.h', 'button.c'],
+  },
+  {
+    id: 'led_pwm', name: 'LED PWM 呼吸灯',
+    keywords: ['pwm', '呼吸灯', '呼吸', '调光', 'led pwm', '渐变'],
+    files: ['led_pwm.h', 'led_pwm.c'],
+  },
+  {
+    id: 'uart_debug', name: 'UART 调试 printf',
+    keywords: ['串口', 'uart', 'usart', 'printf', '调试', '打印', '日志', 'log'],
+    files: ['uart_debug.h', 'uart_debug.c'],
+  },
+];
+
+/** 根据需求文本匹配外设驱动（返回驱动 id 列表） */
+export function detectDrivers(requirement: string): string[] {
+  const lower = requirement.toLowerCase();
+  const ids: string[] = [];
+  for (const drv of STM32_DRIVERS) {
+    if (drv.keywords.some((k) => lower.includes(k.toLowerCase()))) {
+      ids.push(drv.id);
+    }
+  }
+  return ids;
+}
+
+/** 读取外设驱动文件，映射到 Drivers/BSP/ 路径 */
+export function getDriverFiles(driverIds: string[]): { path: string; content: string }[] {
+  const out: { path: string; content: string }[] = [];
+  const dir = join(TEMPLATES_ROOT, 'drivers', 'stm32');
+  for (const id of driverIds) {
+    const drv = STM32_DRIVERS.find((d) => d.id === id);
+    if (!drv) continue;
+    for (const f of drv.files) {
+      try {
+        out.push({ path: `Drivers/BSP/${f}`, content: readFileSync(join(dir, f), 'utf8') });
+      } catch { /* 模板缺失则跳过 */ }
+    }
+  }
+  return out;
+}
+
+/** 运行时加载 STM32 完整骨架（含 HAL/CMSIS/启动文件/链接脚本/Makefile） */
+function loadStm32Skeleton(): { path: string; content: string }[] {
+  try {
+    return loadDirFiles(join(TEMPLATES_ROOT, 'stm32'));
+  } catch {
+    return [];
+  }
+}
 
 /** 骨架文件：由模板自带，不依赖 AI */
 export interface SkeletonFile {
@@ -100,84 +196,8 @@ build_flags =
       buildHint:
         '需要 arm-none-eabi-gcc。先按目标芯片在 Makefile 中设置 MCU 型号，make 编译，st-flash write build/*.bin 0x08000000 烧录',
     },
-    defaultAiFiles: ['Core/Src/main.c', 'Core/Inc/main.h', 'Core/Src/app.c'],
-    skeleton: [
-      {
-        path: 'Makefile',
-        content: `# {{PROJECT_NAME}} - STM32 (HAL)
-# 根据目标芯片调整 MCU（如 stm32f103c8tx / stm32f411vetx）
-MCU     = stm32f103c8tx
-TARGET  = {{PROJECT_NAME}}
-BUILD   = build
-
-CC      = arm-none-eabi-gcc
-OBJCOPY = arm-none-eabi-objcopy
-SIZE    = arm-none-eabi-size
-
-CFLAGS  = -mcpu=cortex-m3 -mthumb -std=c11 -Os ${GCC_WARNING_FLAGS}
-CFLAGS += -DSTM32F103xB -DUSE_HAL_DRIVER
-
-LDFLAGS = -T stm32_flash.ld -specs=nano.specs -Wl,--gc-sections
-
-SOURCES := $(wildcard Core/Src/*.c)
-OBJECTS := $(patsubst Core/Src/%.c,$(BUILD)/%.o,$(SOURCES))
-
-all: $(BUILD)/$(TARGET).elf $(BUILD)/$(TARGET).bin
-	$(SIZE) $(BUILD)/$(TARGET).elf
-
-$(BUILD):
-	mkdir -p $(BUILD)
-
-$(BUILD)/%.o: Core/Src/%.c | $(BUILD)
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(BUILD)/$(TARGET).elf: $(OBJECTS)
-	$(CC) $(LDFLAGS) $^ -o $@
-
-$(BUILD)/$(TARGET).bin: $(BUILD)/$(TARGET).elf
-	$(OBJCOPY) -O binary $< $@
-
-flash: $(BUILD)/$(TARGET).bin
-	st-flash write $< 0x08000000
-
-clean:
-	rm -rf $(BUILD)
-
-.PHONY: all flash clean
-`,
-      },
-      {
-        path: 'stm32_flash.ld',
-        content: `/* Simplified linker script for STM32F103C8 (64KB flash / 20KB RAM).
-   For other chips, use the linker script from STM32CubeMX instead. */
-MEMORY
-{
-  FLASH (rx) : ORIGIN = 0x08000000, LENGTH = 64K
-  RAM (rwx)  : ORIGIN = 0x20000000, LENGTH = 20K
-}
-
-_estack = ORIGIN(RAM) + LENGTH(RAM);
-
-SECTIONS
-{
-  .isr_vector : { KEEP(*(.isr_vector)) } > FLASH
-  .text       : { *(.text*) *(.rodata*) } > FLASH
-  .data : {
-    _sdata = .;
-    *(.data*)
-    _edata = .;
-  } > RAM AT > FLASH
-  _sidata = LOADADDR(.data);
-  .bss (NOLOAD) : {
-    _sbss = .;
-    *(.bss*)
-    _ebss = .;
-  } > RAM
-}
-`,
-      },
-      { path: '.gitignore', content: 'build/\n*.elf\n*.bin\n*.o\n' },
-    ],
+    defaultAiFiles: ['Core/Src/main.c', 'Core/Src/app.c', 'Core/Inc/app.h', 'Core/Inc/main.h'],
+    skeleton: loadStm32Skeleton(),
   },
 
   esp32: {

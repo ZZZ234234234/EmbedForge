@@ -1,6 +1,6 @@
 import type { LlmClient } from './llm.js';
 import { buildUserMessage } from './context.js';
-import { getPlatform } from './templates.js';
+import { detectDrivers, getPlatform } from './templates.js';
 import type { Attachment, PlatformId, ProjectPlan } from './types.js';
 
 const PLAN_SYSTEM_PROMPT = `你是一名有 10 年以上 ARM/MCU 量产项目经验的资深嵌入式系统架构师。用户会给出一个嵌入式开发需求，你需要输出一份结构化的工程规划 JSON，用于驱动代码生成。规划必须像真实项目立项评审一样严谨。
@@ -53,10 +53,16 @@ export async function planProject(
     if (plan && plan.projectName && plan.platform) {
       const template = getPlatform(plan.platform);
       if (template) {
+        // 过滤掉标准库/驱动/构建文件，AI 只生成应用层（Core/ 下的源码）
+        const rawFiles = plan.files?.length ? plan.files : template.defaultAiFiles;
+        const aiFiles = rawFiles.filter(
+          (f) => !f.startsWith('Drivers/') && !f.startsWith('startup_') && !f.endsWith('.ld') && f !== 'Makefile',
+        );
         return {
           ...plan,
           projectName: sanitizeName(plan.projectName),
-          files: plan.files?.length ? plan.files : template.defaultAiFiles,
+          files: aiFiles.length ? aiFiles : template.defaultAiFiles,
+          drivers: plan.platform === 'stm32' ? detectDrivers(requirement) : [],
         };
       }
     }
@@ -108,6 +114,7 @@ export function fallbackPlan(requirement: string, platformHint?: string): Projec
     modules: [requirement],
     pinout: [],
     files: [...template.defaultAiFiles],
+    drivers: platform === 'stm32' ? detectDrivers(requirement) : [],
     buildSystem: defaultBuildSystem(platform),
   };
 }

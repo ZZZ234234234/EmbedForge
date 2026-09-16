@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { exec } from 'node:child_process';
 import {
   SessionStore,
   buildMemoryBrief,
@@ -17,7 +18,7 @@ import {
   parseSkill,
   userSkillsDir,
 } from './core/skills.js';
-import { PLATFORM_LIST, getPlatform } from './core/templates.js';
+import { PLATFORM_LIST, detectDrivers, getPlatform } from './core/templates.js';
 import type {
   AgentRunResult,
   Attachment,
@@ -91,6 +92,8 @@ export interface RunResult {
   skillsUsed: Skill[];
   /** 代码审查结果（未启用或失败时为 null） */
   review: ReviewResult | null;
+  /** 工程输出目录绝对路径 */
+  outDir: string;
 }
 
 const DEFAULT_OUT_DIR = './generated';
@@ -129,6 +132,7 @@ export async function runEmbedForge(
       modules: [],
       pinout: [],
       files: [],
+      drivers: platform === 'stm32' ? detectDrivers(requirement) : [],
       buildSystem: defaultBuildSystem(platform),
     };
   } else {
@@ -180,10 +184,28 @@ export async function runEmbedForge(
     elapsedMs: Date.now() - started,
     review,
   };
-  return { plan, result, skeletonOnly, session, skillsUsed: matchedSkills, review };
+  return { plan, result, skeletonOnly, session, skillsUsed: matchedSkills, review, outDir };
 }
 
 function sanitizeDirName(name: string): string {
   const clean = name.toLowerCase().replace(/[^a-z0-9一-龥-]+/g, '-').replace(/^-+|-+$/g, '');
   return clean || 'embedded-project';
+}
+
+/**
+ * 跨平台打开文件夹（Windows 资源管理器 / macOS Finder / Linux xdg-open）。
+ * 失败时静默忽略（无头环境/CI 不影响主流程）。
+ */
+export function openFolder(dir: string): void {
+  try {
+    const cmd =
+      process.platform === 'win32'
+        ? `explorer "${dir}"`
+        : process.platform === 'darwin'
+          ? `open "${dir}"`
+          : `xdg-open "${dir}"`;
+    exec(cmd, () => { /* 忽略结果 */ });
+  } catch {
+    /* 忽略 */
+  }
 }

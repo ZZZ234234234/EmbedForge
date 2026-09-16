@@ -1,5 +1,5 @@
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { attachmentFromContent, runEmbedForge } from '../index.js';
+import { attachmentFromContent, openFolder, runEmbedForge } from '../index.js';
 import type { LlmConfig, WebServerConfig } from '../core/types.js';
 import { UI_HTML } from './ui.js';
 
@@ -72,13 +72,24 @@ export function startWebServer(
           model: body.model?.trim() || defaults.model || 'qwen2.5:7b',
           apiKey: body.apiKey?.trim() || defaults.apiKey || undefined,
         };
-        const { plan, result, session } = await runEmbedForge(requirement, llm, {
+        console.log(
+          `[generate] baseURL=${llm.baseURL} model=${llm.model} hasKey=${Boolean(llm.apiKey)} platform=${body.platform || 'auto'} req="${requirement.slice(0, 60)}"`,
+        );
+        const { plan, result, session, outDir } = await runEmbedForge(requirement, llm, {
           platform: body.platform || undefined,
           outDir: './generated',
           attachments,
           sessionId: body.sessionId,
         });
-        sendJson(res, 200, { plan, result, session: { id: session.id, turns: session.turns.length } });
+        if (result.failedFiles.length) {
+          for (const f of result.failedFiles) {
+            console.error(`[generate] FAILED ${f.path}: ${f.error ?? 'unknown'}`);
+          }
+        } else {
+          console.log(`[generate] OK ${result.aiGeneratedCount} AI files generated`);
+        }
+        openFolder(outDir);
+        sendJson(res, 200, { plan, result, session: { id: session.id, turns: session.turns } });
         return;
       }
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });

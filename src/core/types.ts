@@ -43,8 +43,10 @@ export interface ProjectPlan {
   modules: string[];
   /** 引脚分配说明，如 [{ pin: 'PA0', signal: 'DHT11_DATA' }] */
   pinout: PinMapping[];
-  /** 需要生成的源代码文件清单（相对工程根目录） */
+  /** 需要生成的源代码文件清单（相对工程根目录，仅应用层，标准库和外设驱动由模板提供） */
   files: string[];
+  /** 自动匹配的外设驱动 id（如 dht11 / ssd1306 / button / led_pwm / uart_debug），由模板注入，不调 LLM */
+  drivers: string[];
   /** 构建系统，如 make / cmake / platformio */
   buildSystem: string;
 }

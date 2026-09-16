@@ -1,5 +1,5 @@
 import type { LlmClient } from './llm.js';
-import { PLATFORM_TEMPLATES, renderSkeleton } from './templates.js';
+import { getDriverFiles, PLATFORM_TEMPLATES, renderSkeleton } from './templates.js';
 import type { GeneratedFileResult, ProjectPlan } from './types.js';
 
 /** 并发生成上限 */
@@ -7,8 +7,10 @@ const CONCURRENCY = 3;
 
 function buildSystemPrompt(plan: ProjectPlan, alreadyDone: string[], extraContext = '', skillsContext = ''): string {
   const template = PLATFORM_TEMPLATES[plan.platform];
+  const driverFiles = getDriverFiles(plan.drivers || []);
   const structureLines = [
     ...template.skeleton.map((f) => `- ${f.path}（骨架，已存在）`),
+    ...driverFiles.map((f) => `- ${f.path}（外设驱动模板，已存在，可直接 #include 调用）`),
     ...plan.files.map((f) => `- ${f}（待生成）`),
   ].join('\n');
   return `你是一名有 10 年以上 ARM/MCU 量产项目经验的资深嵌入式软件工程师，正在为 "${plan.projectName}" 项目编写生产级代码。你的代码要能通过严格的技术评审。
@@ -100,14 +102,27 @@ export async function generateProject(
     PROJECT_NAME_UPPER: plan.projectName.toUpperCase().replace(/-/g, '_'),
   };
 
-  const skeletonFiles: GeneratedFileResult[] = template.skeleton.map((f) => ({
-    path: f.path,
-    status: 'ok' as const,
-    content: renderSkeleton(f.content, vars),
-  }));
+  const driverFiles = getDriverFiles(plan.drivers || []);
+  const skeletonPaths = new Set([
+    ...template.skeleton.map((s) => s.path),
+    ...driverFiles.map((d) => d.path),
+  ]);
+
+  const skeletonFiles: GeneratedFileResult[] = [
+    ...template.skeleton.map((f) => ({
+      path: f.path,
+      status: 'ok' as const,
+      content: renderSkeleton(f.content, vars),
+    })),
+    ...driverFiles.map((f) => ({
+      path: f.path,
+      status: 'ok' as const,
+      content: f.content,
+    })),
+  ];
 
   const aiFiles = await mapWithConcurrency(
-    plan.files.filter((p) => !template.skeleton.some((s) => s.path === p)),
+    plan.files.filter((p) => !skeletonPaths.has(p)),
     CONCURRENCY,
     (filePath) => generateOneFile(client, plan, filePath, plan.files, extraContext, skillsContext),
   );

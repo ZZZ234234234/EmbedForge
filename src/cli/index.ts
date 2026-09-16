@@ -8,6 +8,7 @@ import {
   loadAllSkills,
   installSkill,
   userSkillsDir,
+  openFolder,
 } from '../index.js';
 import { LlmClient } from '../core/llm.js';
 import { PLATFORM_LIST } from '../core/templates.js';
@@ -31,7 +32,7 @@ const program = new Command();
 program
   .name('embedforge')
   .description('嵌入式 AI 开发 Agent：描述需求，生成完整工程文件；支持技能知识库与 Agent 文件工具')
-  .version('0.4.0');
+  .version('0.5.0');
 
 program
   .command('generate')
@@ -53,7 +54,7 @@ program
       const llm = resolveLlm(opts as Record<string, string>);
       const attachPaths = (opts.attach as string[]) ?? [];
       const attachments = attachPaths.map((p) => loadAttachmentFromPath(p));
-      const { plan, result, skeletonOnly, session, skillsUsed, review } = await runEmbedForge(
+      const { plan, result, skeletonOnly, session, skillsUsed, review, outDir } = await runEmbedForge(
         requirement,
         llm,
         {
@@ -67,6 +68,7 @@ program
         },
       );
       printResult(plan, result, skeletonOnly, session.id, attachments.length, skillsUsed, review);
+      openFolder(outDir);
     } catch (err) {
       console.error(`\n✖ ${(err as Error).message}`);
       process.exitCode = 1;
