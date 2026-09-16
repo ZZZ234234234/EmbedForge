@@ -1,5 +1,6 @@
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { attachmentFromContent, openFolder, runEmbedForge } from '../index.js';
+import { loadAllSkills } from '../core/skills.js';
 import type { LlmConfig, WebServerConfig } from '../core/types.js';
 import { UI_HTML } from './ui.js';
 
@@ -46,6 +47,11 @@ export function startWebServer(
         res.end(UI_HTML);
         return;
       }
+      if (req.method === 'GET' && url === '/api/skills') {
+        const skills = loadAllSkills().map((s) => ({ name: s.name, description: s.description, triggers: s.triggers }));
+        sendJson(res, 200, { skills });
+        return;
+      }
       if (req.method === 'POST' && url === '/api/generate') {
         const raw = await readBody(req);
         const body = JSON.parse(raw) as {
@@ -56,6 +62,8 @@ export function startWebServer(
           platform?: string;
           sessionId?: string;
           attachments?: RawAttachment[];
+          skills?: string[];
+          noSkills?: boolean;
         };
         const requirement = (body.requirement ?? '').trim();
         if (!requirement) {
@@ -80,6 +88,8 @@ export function startWebServer(
           outDir: './generated',
           attachments,
           sessionId: body.sessionId,
+          skills: body.skills,
+          noSkills: body.noSkills,
         });
         if (result.failedFiles.length) {
           for (const f of result.failedFiles) {

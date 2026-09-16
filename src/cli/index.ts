@@ -32,7 +32,7 @@ const program = new Command();
 program
   .name('embedforge')
   .description('嵌入式 AI 开发 Agent：描述需求，生成完整工程文件；支持技能知识库与 Agent 文件工具')
-  .version('0.5.0');
+  .version('0.6.0');
 
 program
   .command('generate')
@@ -46,7 +46,8 @@ program
   .option('--api-key <key>', 'API Key（也可用环境变量 EMBEDFORGE_API_KEY）')
   .option('--attach <path>', '附件（数据手册/代码/原理图图片），可重复指定多次', collect, [])
   .option('--session <id>', '续接已有会话 id（保留上下文记忆）')
-  .option('--skill <name>', '强制注入的技能（embedforge skills 查看），可重复指定多次', collect, [])
+  .option('--skill <name>', '技能白名单（仅使用这些技能），可重复指定；不传则自动匹配全部', collect, [])
+  .option('--no-skills', '禁用所有专家技能（小项目省 token）')
   .option('--no-review', '跳过生成后的 AI 代码审查（默认开启审查并自动修复问题）')
   .option('--skeleton-only', '不调用 LLM，仅生成平台骨架工程（离线可用）')
   .action(async (requirement: string, opts: Record<string, unknown>) => {
@@ -64,6 +65,7 @@ program
           attachments,
           sessionId: opts.session as string | undefined,
           skills: (opts.skill as string[]) ?? [],
+          noSkills: Boolean(opts.noSkills),
           noReview: Boolean(opts.noReview),
         },
       );

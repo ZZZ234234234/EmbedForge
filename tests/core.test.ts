@@ -60,7 +60,8 @@ describe('fallbackPlan', () => {
   it('默认文件清单来自平台模板', () => {
     const p = fallbackPlan('stm32f103 项目');
     expect(p.files.length).toBeGreaterThan(0);
-    expect(p.files).toContain('Core/Src/main.c');
+    expect(p.files).toContain('Core/Src/app.c');
+    expect(p.files).not.toContain('Core/Src/main.c'); // main.c 已模板化，AI 不生成
   });
   it('micropython 默认文件为 Python 脚本', () => {
     const p = fallbackPlan('micropython 温湿度');

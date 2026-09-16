@@ -77,8 +77,10 @@ export interface GenerateOptions {
   sessionId?: string;
   /** 会话记忆存储目录 */
   sessionStoreDir?: string;
-  /** 强制注入的技能名（默认按需求自动匹配） */
+  /** 技能白名单：仅使用这些技能（按 name）；不传则按需求自动匹配全部内置技能 */
   skills?: string[];
+  /** 禁用所有技能（小项目省 token，不传则默认启用自动匹配） */
+  noSkills?: boolean;
   /** 关闭资深工程师代码审查（默认开启） */
   noReview?: boolean;
 }
@@ -107,7 +109,8 @@ export async function runEmbedForge(
   const started = Date.now();
   const client = new LlmClient(llm);
   const attachments = opts.attachments ?? [];
-  const forceSkills = opts.skills ?? [];
+  const noSkills = !!opts.noSkills;
+  const skillWhitelist = opts.skills ?? [];
 
   // 会话记忆：续接已有会话或新建
   const store = new SessionStore(opts.sessionStoreDir);
@@ -117,8 +120,14 @@ export async function runEmbedForge(
   const extraContext = buildTextContext(attachments) + memoryBrief;
 
   const allSkills = loadAllSkills();
+  // 技能池过滤：noSkills 清空；白名单则只保留指定技能
+  const availableSkills = noSkills
+    ? []
+    : skillWhitelist.length
+      ? allSkills.filter((s) => skillWhitelist.includes(s.name))
+      : allSkills;
   const skeletonOnly = !!opts.skeletonOnly;
-  const preMatched = skeletonOnly ? [] : matchSkills(requirement, allSkills, { forceSkills });
+  const preMatched = skeletonOnly ? [] : matchSkills(requirement, availableSkills, { forceSkills: [] });
 
   let plan: ProjectPlan;
   if (skeletonOnly) {
@@ -147,7 +156,7 @@ export async function runEmbedForge(
   const planText = `${plan.summary} ${plan.modules.join(' ')} ${plan.platform}`;
   const matchedSkills = skeletonOnly
     ? []
-    : matchSkills(requirement, allSkills, { planText, forceSkills });
+    : matchSkills(requirement, availableSkills, { planText, forceSkills: [] });
   const skillsContext = buildSkillsContext(matchedSkills);
 
   const generated = await generateProject(client, plan, extraContext, skillsContext);

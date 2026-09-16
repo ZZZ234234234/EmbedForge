@@ -28,6 +28,11 @@ function buildSystemPrompt(plan: ProjectPlan, alreadyDone: string[], extraContex
 【工程结构】
 ${structureLines}${extraContext}${skillsContext}
 
+【应用层约定】
+- main.c 已由骨架提供标准框架（HAL_Init / 时钟配置 / GPIO 使能 / 调用 app_init() / while(1) 调 app_loop()），不要重新生成 main.c。
+- 你只需生成 app.c 和 app.h：app.h 声明 app_init(void) 和 app_loop(void)；app.c 实现这两个函数，所有业务逻辑（外设初始化、传感器读取、显示刷新、状态机）都写在这里。
+- 外设驱动模板已在 Drivers/BSP/ 下，直接 #include "dht11.h" / "ssd1306.h" / "button.h" / "led_pwm.h" / "uart_debug.h" 调用即可，不要重写驱动。
+
 工程标准（评审红线，逐条落实）：
 1. 只输出该文件的完整代码，不要输出任何解释、注释头或多余文字。
 2. 代码符合平台惯例（HAL / ESP-IDF / Arduino API / Pico SDK / Zephyr / MicroPython），C 用 C11。

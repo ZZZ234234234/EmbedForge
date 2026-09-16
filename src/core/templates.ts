@@ -196,7 +196,7 @@ build_flags =
       buildHint:
         '需要 arm-none-eabi-gcc。先按目标芯片在 Makefile 中设置 MCU 型号，make 编译，st-flash write build/*.bin 0x08000000 烧录',
     },
-    defaultAiFiles: ['Core/Src/main.c', 'Core/Src/app.c', 'Core/Inc/app.h', 'Core/Inc/main.h'],
+    defaultAiFiles: ['Core/Src/app.c', 'Core/Inc/app.h'],
     skeleton: loadStm32Skeleton(),
   },
 

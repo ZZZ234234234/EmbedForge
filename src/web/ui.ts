@@ -37,6 +37,17 @@ export const UI_HTML = `<!DOCTYPE html>
   .btn:disabled { opacity:.5; cursor:not-allowed; }
   .btn-ghost { background:transparent; border:1px solid var(--border); color:var(--muted); padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; width:100%; margin-top:8px; }
   .btn-ghost:hover { border-color:var(--accent); color:var(--text); }
+  .skills-section { margin-top:16px; border-top:1px solid var(--border); padding-top:12px; }
+  .skills-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .skills-header label { font-size:12px; color:var(--text); font-weight:600; }
+  .no-skills-label { font-weight:400 !important; color:var(--muted) !important; font-size:11.5px !important; cursor:pointer; }
+  .skills-list { max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; }
+  .skill-item { display:flex; align-items:flex-start; gap:6px; padding:5px 7px; border-radius:5px; cursor:pointer; font-size:11.5px; }
+  .skill-item:hover { background:var(--bg-hover); }
+  .skill-item input { margin-top:2px; flex-shrink:0; }
+  .skill-name { color:var(--text); font-weight:600; white-space:nowrap; }
+  .skill-desc { color:var(--muted); font-size:10.5px; line-height:1.4; }
+  .skills-list.disabled .skill-item { opacity:0.4; pointer-events:none; }
 
   /* ===== 中栏：聊天 ===== */
   .chat { display:flex; flex-direction:column; min-height:0; background:var(--bg); }
@@ -122,6 +133,14 @@ export const UI_HTML = `<!DOCTYPE html>
       <div class="hint">文本直接读入上下文；图片按多模态发送（需视觉模型如 gpt-4o/qwen-vl），单张 ≤5MB。</div>
 
       <button class="btn-ghost" id="clearAttachBtn">清空附件</button>
+
+      <div class="skills-section">
+        <div class="skills-header">
+          <label>专家技能（勾选启用，小项目可全禁用省 token）</label>
+          <label class="no-skills-label"><input type="checkbox" id="noSkills"> 全部禁用</label>
+        </div>
+        <div id="skillsList" class="skills-list">加载中...</div>
+      </div>
     </div>
   </div>
 
@@ -182,6 +201,37 @@ document.getElementById('attachInput').addEventListener('change', function(e){
   e.target.value = '';
 });
 document.getElementById('clearAttachBtn').addEventListener('click', function(){ state.attachments=[]; renderAttachments(); });
+
+/* ===== 专家技能加载与选择 ===== */
+function loadSkills(){
+  fetch('/api/skills').then(function(r){ return r.json(); }).then(function(d){
+    var list = document.getElementById('skillsList');
+    if(!d.skills || !d.skills.length){ list.innerHTML = '无可用技能'; return; }
+    list.innerHTML = '';
+    d.skills.forEach(function(sk){
+      var label = document.createElement('label');
+      label.className = 'skill-item';
+      label.innerHTML = '<input type="checkbox" class="skill-cb" value="'+esc(sk.name)+'" checked>'
+        + '<div><span class="skill-name">'+esc(sk.name)+'</span>'
+        + '<div class="skill-desc">'+esc(sk.description||'')+'</div></div>';
+      list.appendChild(label);
+    });
+  }).catch(function(){ document.getElementById('skillsList').innerHTML = '加载失败'; });
+}
+document.getElementById('noSkills').addEventListener('change', function(e){
+  var list = document.getElementById('skillsList');
+  if(e.target.checked){ list.classList.add('disabled'); }
+  else { list.classList.remove('disabled'); }
+});
+loadSkills();
+
+function getSelectedSkills(){
+  if(document.getElementById('noSkills').checked) return [];
+  var cbs = document.querySelectorAll('.skill-cb:checked');
+  var arr = [];
+  cbs.forEach(function(cb){ arr.push(cb.value); });
+  return arr;
+}
 function renderAttachments(){
   var el = document.getElementById('attList');
   el.innerHTML = '';
@@ -226,7 +276,9 @@ function send(){
       apiKey: document.getElementById('key').value.trim(),
       platform: document.getElementById('platform').value,
       attachments: state.attachments,
-      sessionId: state.sessionId
+      sessionId: state.sessionId,
+      skills: getSelectedSkills(),
+      noSkills: document.getElementById('noSkills').checked
     })
   }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); })
     .then(function(res){
