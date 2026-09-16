@@ -1,5 +1,5 @@
 import type { LlmClient } from './llm.js';
-import { getDriverFiles, PLATFORM_TEMPLATES, renderSkeleton } from './templates.js';
+import { getBuildFiles, getDriverFiles, PLATFORM_TEMPLATES, renderSkeleton } from './templates.js';
 import type { GeneratedFileResult, ProjectPlan } from './types.js';
 
 /** 并发生成上限 */
@@ -108,9 +108,11 @@ export async function generateProject(
   };
 
   const driverFiles = getDriverFiles(plan.drivers || []);
+  const buildFiles = getBuildFiles(plan.platform, plan.buildSystem || 'make');
   const skeletonPaths = new Set([
     ...template.skeleton.map((s) => s.path),
     ...driverFiles.map((d) => d.path),
+    ...buildFiles.map((b) => b.path),
   ]);
 
   const skeletonFiles: GeneratedFileResult[] = [
@@ -123,6 +125,11 @@ export async function generateProject(
       path: f.path,
       status: 'ok' as const,
       content: f.content,
+    })),
+    ...buildFiles.map((f) => ({
+      path: f.path,
+      status: 'ok' as const,
+      content: renderSkeleton(f.content, vars),
     })),
   ];
 

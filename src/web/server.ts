@@ -60,6 +60,7 @@ export function startWebServer(
           model?: string;
           apiKey?: string;
           platform?: string;
+          buildSystem?: string;
           sessionId?: string;
           attachments?: RawAttachment[];
           skills?: string[];
@@ -85,6 +86,7 @@ export function startWebServer(
         );
         const { plan, result, session, outDir } = await runEmbedForge(requirement, llm, {
           platform: body.platform || undefined,
+          buildSystem: body.buildSystem || undefined,
           outDir: './generated',
           attachments,
           sessionId: body.sessionId,

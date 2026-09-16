@@ -195,6 +195,13 @@ export const UI_HTML = `<!DOCTYPE html>
         <option>pico</option><option>avr</option><option>micropython</option>
         <option>zephyr</option><option>generic-c</option>
       </select>
+      <label>构建系统（STM32 支持四种）</label>
+      <select id="buildSystem">
+        <option value="make">Makefile (arm-none-eabi-gcc)</option>
+        <option value="cmake">CMake</option>
+        <option value="keil">Keil MDK (.uvprojx)</option>
+        <option value="platformio">PlatformIO</option>
+      </select>
     </div>
 
     <div class="section">
@@ -403,6 +410,7 @@ function send(){
       model: document.getElementById('model').value.trim(),
       apiKey: document.getElementById('key').value.trim(),
       platform: document.getElementById('platform').value,
+      buildSystem: document.getElementById('buildSystem').value,
       attachments: state.attachments,
       sessionId: state.sessionId,
       skills: getSelectedSkills(),

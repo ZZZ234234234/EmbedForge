@@ -90,7 +90,25 @@ export function getDriverFiles(driverIds: string[]): { path: string; content: st
 /** 运行时加载 STM32 完整骨架（含 HAL/CMSIS/启动文件/链接脚本/Makefile） */
 function loadStm32Skeleton(): { path: string; content: string }[] {
   try {
-    return loadDirFiles(join(TEMPLATES_ROOT, 'stm32'));
+    // 排除 build/ 目录（构建系统文件按选择单独注入）
+    return loadDirFiles(join(TEMPLATES_ROOT, 'stm32')).filter((f) => !f.path.startsWith('build/'));
+  } catch {
+    return [];
+  }
+}
+
+/** 支持的构建系统 */
+export const BUILD_SYSTEMS = ['make', 'cmake', 'keil', 'platformio'] as const;
+export type BuildSystem = (typeof BUILD_SYSTEMS)[number];
+
+/**
+ * 根据构建系统读取对应构建文件（从 templates/<platform>/build/<system>/ 递归读取）。
+ * 返回路径相对于工程根目录。
+ */
+export function getBuildFiles(platform: string, buildSystem: string): { path: string; content: string }[] {
+  const sys = BUILD_SYSTEMS.includes(buildSystem as BuildSystem) ? buildSystem : 'make';
+  try {
+    return loadDirFiles(join(TEMPLATES_ROOT, platform, 'build', sys));
   } catch {
     return [];
   }

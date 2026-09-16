@@ -32,7 +32,7 @@ const program = new Command();
 program
   .name('embedforge')
   .description('嵌入式 AI 开发 Agent：描述需求，生成完整工程文件；支持技能知识库与 Agent 文件工具')
-  .version('0.7.0');
+  .version('0.8.0');
 
 program
   .command('generate')
@@ -40,7 +40,8 @@ program
   .argument('<requirement>', '开发需求描述，例如 "STM32F103 读取 DHT11 温湿度，OLED 显示"')
   .option('-o, --out <dir>', '输出目录（默认 ./generated）')
   .option('-p, --platform <id>', '强制指定平台：stm32 | esp32 | arduino | pico | avr | micropython | zephyr | generic-c')
-  .option('--provider <name>', `API 服务商预设：${Object.keys(PROVIDER_PRESETS).join(' | ')}（默认 deepseek）`)
+    .option('--build-system <name>', '构建系统：make | cmake | keil | platformio（默认 make，仅 STM32 支持全部四种）')
+.option('--provider <name>', `API 服务商预设：${Object.keys(PROVIDER_PRESETS).join(' | ')}（默认 deepseek）`)
   .option('--base-url <url>', 'OpenAI 兼容 API 端点（覆盖预设）')
   .option('--model <model>', '模型名（覆盖预设；图片识别需用多模态模型如 gpt-4o/qwen-vl）')
   .option('--api-key <key>', 'API Key（也可用环境变量 EMBEDFORGE_API_KEY）')
@@ -61,7 +62,8 @@ program
         {
           outDir: (opts.out as string) ?? './generated',
           platform: (opts.platform as string) || undefined,
-          skeletonOnly: Boolean(opts.skeletonOnly),
+                    buildSystem: (opts.buildSystem as string) || undefined,
+skeletonOnly: Boolean(opts.skeletonOnly),
           attachments,
           sessionId: opts.session as string | undefined,
           skills: (opts.skill as string[]) ?? [],

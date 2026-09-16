@@ -69,6 +69,8 @@ export interface GenerateOptions {
   outDir?: string;
   /** 强制指定平台（跳过 LLM 平台推断） */
   platform?: string;
+  /** 构建系统：make / cmake / keil / platformio（默认 make，仅 STM32 支持全部四种） */
+  buildSystem?: string;
   /** 关闭 LLM：仅生成骨架工程 */
   skeletonOnly?: boolean;
   /** 上传的附件（文本文件 / 图片） */
@@ -158,6 +160,9 @@ export async function runEmbedForge(
     ? []
     : matchSkills(requirement, availableSkills, { planText, forceSkills: [] });
   const skillsContext = buildSkillsContext(matchedSkills);
+
+  // 用户指定构建系统则覆盖（make / cmake / keil / platformio）
+  if (opts.buildSystem) plan.buildSystem = opts.buildSystem;
 
   const generated = await generateProject(client, plan, extraContext, skillsContext);
 
