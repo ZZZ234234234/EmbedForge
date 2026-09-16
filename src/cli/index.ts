@@ -32,7 +32,7 @@ const program = new Command();
 program
   .name('embedforge')
   .description('嵌入式 AI 开发 Agent：描述需求，生成完整工程文件；支持技能知识库与 Agent 文件工具')
-  .version('0.6.0');
+  .version('0.7.0');
 
 program
   .command('generate')

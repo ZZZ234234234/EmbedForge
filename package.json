@@ -1,6 +1,6 @@
 {
   "name": "embedforge",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "AI embedded development agent with senior-engineer skills, agentic file tools and code review. 嵌入式 AI 开发 Agent：描述需求，生成完整工程文件；内置资深工程师技能库与 Agent 文件工具。",
   "type": "module",
   "bin": {
