@@ -27,11 +27,25 @@ const DEFAULT_MAX_STEPS = 24;
 
 export class AgentError extends Error {}
 
-/** 把工程内相对路径安全地解析为绝对路径，拒绝越出工程目录 */
+/**
+ * 把工程内相对路径安全地解析为绝对路径，拒绝越出工程目录。
+ * 跨平台生效：无论运行在 Windows 还是 POSIX，都识别并拒绝
+ * 另一平台的绝对路径（盘符 C:/、UNC //、POSIX 根 /），防止 LLM
+ * 传入异平台绝对路径绕过沙箱（例如在 Linux Runner 上传入 `C:\...`）。
+ */
 export function safeJoin(projectDir: string, relPath: string): string {
   if (!relPath || typeof relPath !== 'string') throw new AgentError('路径不能为空');
+  // 统一分隔符：把 Windows 反斜杠规整为 /，使 POSIX 上也能正确识别目录穿越与盘符
+  const normalized = relPath.replace(/\\/g, '/').trim();
+  const looksAbsolute =
+    isAbsolute(normalized) || // 本平台绝对路径（POSIX: /xxx；Windows 已规整后也能识别）
+    /^[a-zA-Z]:\//.test(normalized) || // Windows 盘符，如 C:/...（在 POSIX 上本不被视为绝对）
+    normalized.startsWith('//'); // Windows UNC（\\server 规整后为 //server）
+  if (looksAbsolute) {
+    throw new AgentError(`不允许使用绝对路径，请改用相对工程根目录的路径: ${relPath}`);
+  }
   const root = resolve(projectDir);
-  const abs = resolve(root, relPath);
+  const abs = resolve(root, normalized);
   if (abs !== root && !abs.startsWith(root + sep)) {
     throw new AgentError(`路径越出工程目录，已拒绝: ${relPath}`);
   }
