@@ -1,10 +1,23 @@
 /**
   ******************************************************************************
   * @file    stm32f1xx_hal.h
-  * @brief   HAL 主头文件，聚合所有 HAL 模块头文件与全局定义。
+  * @author  MCD Application Team
+  * @brief   This file contains all the functions prototypes for the HAL
+  *          module driver.
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2017 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
   ******************************************************************************
   */
 
+/* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __STM32F1xx_HAL_H
 #define __STM32F1xx_HAL_H
 
@@ -15,156 +28,330 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f1xx_hal_conf.h"
 
-/* Exported types ------------------------------------------------------------*/
-
-/**
-  * @brief  HAL 状态枚举
+/** @addtogroup STM32F1xx_HAL_Driver
+  * @{
   */
-typedef enum
-{
-  HAL_OK      = 0x00U,
-  HAL_ERROR   = 0x01U,
-  HAL_BUSY    = 0x02U,
-  HAL_TIMEOUT = 0x03U
-} HAL_StatusTypeDef;
 
-/**
-  * @brief  HAL 锁定状态枚举
+/** @addtogroup HAL
+  * @{
   */
-typedef enum
-{
-  HAL_UNLOCKED = 0x00U,
-  HAL_LOCKED   = 0x01U
-} HAL_LockTypeDef;
 
 /* Exported constants --------------------------------------------------------*/
 
-#ifndef UNUSED
-#define UNUSED(X) ((void)(X))
+/** @defgroup HAL_Exported_Constants HAL Exported Constants
+  * @{
+  */
+
+/** @defgroup HAL_TICK_FREQ Tick Frequency
+  * @{
+  */
+typedef enum
+{
+  HAL_TICK_FREQ_10HZ         = 100U,
+  HAL_TICK_FREQ_100HZ        = 10U,
+  HAL_TICK_FREQ_1KHZ         = 1U,
+  HAL_TICK_FREQ_DEFAULT      = HAL_TICK_FREQ_1KHZ
+} HAL_TickFreqTypeDef;
+/**
+  * @}
+  */
+/* Exported types ------------------------------------------------------------*/
+extern __IO uint32_t uwTick;
+extern uint32_t uwTickPrio;
+extern HAL_TickFreqTypeDef uwTickFreq;
+
+/**
+  * @}
+  */
+/* Exported macro ------------------------------------------------------------*/
+/** @defgroup HAL_Exported_Macros HAL Exported Macros
+  * @{
+  */
+
+/** @defgroup DBGMCU_Freeze_Unfreeze Freeze Unfreeze Peripherals in Debug mode
+  * @brief   Freeze/Unfreeze Peripherals in Debug mode
+  * Note: On devices STM32F10xx8 and STM32F10xxB,
+  *                  STM32F101xC/D/E and STM32F103xC/D/E,
+  *                  STM32F101xF/G and STM32F103xF/G
+  *                  STM32F10xx4 and STM32F10xx6
+  *       Debug registers DBGMCU_IDCODE and DBGMCU_CR are accessible only in
+  *       debug mode (not accessible by the user software in normal mode).
+  *       Refer to errata sheet of these devices for more details.
+  * @{
+  */
+
+/* Peripherals on APB1 */
+/**
+  * @brief  TIM2 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_TIM2()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM2_STOP)
+#define __HAL_DBGMCU_UNFREEZE_TIM2()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM2_STOP)
+
+/**
+  * @brief  TIM3 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_TIM3()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM3_STOP)
+#define __HAL_DBGMCU_UNFREEZE_TIM3()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM3_STOP)
+
+#if defined (DBGMCU_CR_DBG_TIM4_STOP)
+/**
+  * @brief  TIM4 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_TIM4()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM4_STOP)
+#define __HAL_DBGMCU_UNFREEZE_TIM4()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM4_STOP)
 #endif
 
-#define HAL_MAX_DELAY      0xFFFFFFFFU
+#if defined (DBGMCU_CR_DBG_TIM5_STOP)
+/**
+  * @brief  TIM5 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_TIM5()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM5_STOP)
+#define __HAL_DBGMCU_UNFREEZE_TIM5()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM5_STOP)
+#endif
 
-#define HAL_UUID_WORD_LEN  4U
+#if defined (DBGMCU_CR_DBG_TIM6_STOP)
+/**
+  * @brief  TIM6 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_TIM6()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM6_STOP)
+#define __HAL_DBGMCU_UNFREEZE_TIM6()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM6_STOP)
+#endif
 
-/* Exported macro ------------------------------------------------------------*/
+#if defined (DBGMCU_CR_DBG_TIM7_STOP)
+/**
+  * @brief  TIM7 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_TIM7()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM7_STOP)
+#define __HAL_DBGMCU_UNFREEZE_TIM7()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM7_STOP)
+#endif
+
+#if defined (DBGMCU_CR_DBG_TIM12_STOP)
+/**
+  * @brief  TIM12 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_TIM12()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM12_STOP)
+#define __HAL_DBGMCU_UNFREEZE_TIM12()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM12_STOP)
+#endif
+
+#if defined (DBGMCU_CR_DBG_TIM13_STOP)
+/**
+  * @brief  TIM13 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_TIM13()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM13_STOP)
+#define __HAL_DBGMCU_UNFREEZE_TIM13()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM13_STOP)
+#endif
+
+#if defined (DBGMCU_CR_DBG_TIM14_STOP)
+/**
+  * @brief  TIM14 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_TIM14()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM14_STOP)
+#define __HAL_DBGMCU_UNFREEZE_TIM14()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM14_STOP)
+#endif
 
 /**
-  * @brief  使能中断（清除 PRIMASK）
+  * @brief  WWDG Peripherals Debug mode
   */
-#define __HAL_ENABLE_INTERRUPTS()   __enable_irq()
+#define __HAL_DBGMCU_FREEZE_WWDG()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_WWDG_STOP)
+#define __HAL_DBGMCU_UNFREEZE_WWDG()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_WWDG_STOP)
 
 /**
-  * @brief  关闭中断（置位 PRIMASK）
+  * @brief  IWDG Peripherals Debug mode
   */
-#define __HAL_DISABLE_INTERRUPTS()  __disable_irq()
+#define __HAL_DBGMCU_FREEZE_IWDG()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_IWDG_STOP)
+#define __HAL_DBGMCU_UNFREEZE_IWDG()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_IWDG_STOP)
 
 /**
-  * @brief  读取 PRIMASK 中断屏蔽状态
+  * @brief  I2C1 Peripherals Debug mode
   */
-#define __HAL_GET_PRIMASK()         __get_PRIMASK()
+#define __HAL_DBGMCU_FREEZE_I2C1_TIMEOUT()    SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_I2C1_SMBUS_TIMEOUT)
+#define __HAL_DBGMCU_UNFREEZE_I2C1_TIMEOUT()  CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_I2C1_SMBUS_TIMEOUT)
+
+#if defined (DBGMCU_CR_DBG_I2C2_SMBUS_TIMEOUT)
+/**
+  * @brief  I2C2 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_I2C2_TIMEOUT()    SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_I2C2_SMBUS_TIMEOUT)
+#define __HAL_DBGMCU_UNFREEZE_I2C2_TIMEOUT()  CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_I2C2_SMBUS_TIMEOUT)
+#endif
+
+#if defined (DBGMCU_CR_DBG_CAN1_STOP)
+/**
+  * @brief  CAN1 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_CAN1()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_CAN1_STOP)
+#define __HAL_DBGMCU_UNFREEZE_CAN1()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_CAN1_STOP)
+#endif
+
+#if defined (DBGMCU_CR_DBG_CAN2_STOP)
+/**
+  * @brief  CAN2 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_CAN2()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_CAN2_STOP)
+#define __HAL_DBGMCU_UNFREEZE_CAN2()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_CAN2_STOP)
+#endif
+
+/* Peripherals on APB2 */
+#if defined (DBGMCU_CR_DBG_TIM1_STOP)
+/**
+  * @brief  TIM1 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_TIM1()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM1_STOP)
+#define __HAL_DBGMCU_UNFREEZE_TIM1()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM1_STOP)
+#endif
+
+#if defined (DBGMCU_CR_DBG_TIM8_STOP)
+/**
+  * @brief  TIM8 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_TIM8()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM8_STOP)
+#define __HAL_DBGMCU_UNFREEZE_TIM8()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM8_STOP)
+#endif
+
+#if defined (DBGMCU_CR_DBG_TIM9_STOP)
+/**
+  * @brief  TIM9 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_TIM9()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM9_STOP)
+#define __HAL_DBGMCU_UNFREEZE_TIM9()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM9_STOP)
+#endif
+
+#if defined (DBGMCU_CR_DBG_TIM10_STOP)
+/**
+  * @brief  TIM10 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_TIM10()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM10_STOP)
+#define __HAL_DBGMCU_UNFREEZE_TIM10()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM10_STOP)
+#endif
+
+#if defined (DBGMCU_CR_DBG_TIM11_STOP)
+/**
+  * @brief  TIM11 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_TIM11()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM11_STOP)
+#define __HAL_DBGMCU_UNFREEZE_TIM11()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM11_STOP)
+#endif
+
+
+#if defined (DBGMCU_CR_DBG_TIM15_STOP)
+/**
+  * @brief  TIM15 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_TIM15()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM15_STOP)
+#define __HAL_DBGMCU_UNFREEZE_TIM15()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM15_STOP)
+#endif
+
+#if defined (DBGMCU_CR_DBG_TIM16_STOP)
+/**
+  * @brief  TIM16 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_TIM16()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM16_STOP)
+#define __HAL_DBGMCU_UNFREEZE_TIM16()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM16_STOP)
+#endif
+
+#if defined (DBGMCU_CR_DBG_TIM17_STOP)
+/**
+  * @brief  TIM17 Peripherals Debug mode
+  */
+#define __HAL_DBGMCU_FREEZE_TIM17()            SET_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM17_STOP)
+#define __HAL_DBGMCU_UNFREEZE_TIM17()          CLEAR_BIT(DBGMCU->CR, DBGMCU_CR_DBG_TIM17_STOP)
+#endif
 
 /**
-  * @brief  设置 PRIMASK
+  * @}
   */
-#define __HAL_SET_PRIMASK(__PRI__)  __set_PRIMASK(__PRI__)
+
+/** @defgroup HAL_Private_Macros HAL Private Macros
+  * @{
+  */
+#define IS_TICKFREQ(FREQ) (((FREQ) == HAL_TICK_FREQ_10HZ)  || \
+                           ((FREQ) == HAL_TICK_FREQ_100HZ) || \
+                           ((FREQ) == HAL_TICK_FREQ_1KHZ))
+/**
+  * @}
+  */
 
 /* Exported functions --------------------------------------------------------*/
-
-/**
-  * @brief  初始化 HAL 库（复位所有外设、初始化 Flash 接口与 SysTick）。
-  * @retval HAL 状态
+/** @addtogroup HAL_Exported_Functions
+  * @{
   */
+/** @addtogroup HAL_Exported_Functions_Group1
+  * @{
+  */
+/* Initialization and de-initialization functions  ******************************/
 HAL_StatusTypeDef HAL_Init(void);
-
-/**
-  * @brief  反初始化 HAL 库（复位所有外设、关闭 SysTick）。
-  * @retval HAL 状态
-  */
 HAL_StatusTypeDef HAL_DeInit(void);
-
-/**
-  * @brief  初始化 MSP（MCU 支持包，时钟/中断/NVIC 等底层配置）。
-  * @note   由 HAL_Init 内部调用，用户需在 stm32f1xx_hal_msp.c 中实现。
-  */
 void HAL_MspInit(void);
-
-/**
-  * @brief  反初始化 MSP。
-  */
 void HAL_MspDeInit(void);
-
+HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority);
 /**
-  * @brief  使能 DBGMCU 调试模块（低功耗模式下保持调试连接）。
-  * @param  DBGMCU_Config 调试配置位
+  * @}
   */
+
+/** @addtogroup HAL_Exported_Functions_Group2
+  * @{
+  */
+/* Peripheral Control functions  ************************************************/
+void HAL_IncTick(void);
+void HAL_Delay(uint32_t Delay);
+uint32_t HAL_GetTick(void);
+uint32_t HAL_GetTickPrio(void);
+HAL_StatusTypeDef HAL_SetTickFreq(HAL_TickFreqTypeDef Freq);
+HAL_TickFreqTypeDef HAL_GetTickFreq(void);
+void HAL_SuspendTick(void);
+void HAL_ResumeTick(void);
+uint32_t HAL_GetHalVersion(void);
+uint32_t HAL_GetREVID(void);
+uint32_t HAL_GetDEVID(void);
+uint32_t HAL_GetUIDw0(void);
+uint32_t HAL_GetUIDw1(void);
+uint32_t HAL_GetUIDw2(void);
 void HAL_DBGMCU_EnableDBGSleepMode(void);
 void HAL_DBGMCU_DisableDBGSleepMode(void);
 void HAL_DBGMCU_EnableDBGStopMode(void);
 void HAL_DBGMCU_DisableDBGStopMode(void);
 void HAL_DBGMCU_EnableDBGStandbyMode(void);
 void HAL_DBGMCU_DisableDBGStandbyMode(void);
+/**
+  * @}
+  */
 
 /**
-  * @brief  返回 HAL 库版本号。
-  * @retval 版本号（0xMMmmpp 格式）
+  * @}
   */
-uint32_t HAL_GetHalVersion(void);
 
 /**
-  * @brief  返回设备唯一 ID 低 32 位。
+  * @}
   */
-uint32_t HAL_GetUIDw0(void);
+/* Private types -------------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
+/** @defgroup HAL_Private_Variables HAL Private Variables
+  * @{
+  */
+/**
+  * @}
+  */
+/* Private constants ---------------------------------------------------------*/
+/** @defgroup HAL_Private_Constants HAL Private Constants
+  * @{
+  */
+/**
+  * @}
+  */
+/* Private macros ------------------------------------------------------------*/
+/* Private functions ---------------------------------------------------------*/
+/**
+  * @}
+  */
 
 /**
-  * @brief  返回设备唯一 ID 中 32 位。
+  * @}
   */
-uint32_t HAL_GetUIDw1(void);
-
-/**
-  * @brief  返回设备唯一 ID 高 32 位。
-  */
-uint32_t HAL_GetUIDw2(void);
-
-/**
-  * @brief  返回 REV_ID 寄存器值。
-  */
-uint32_t HAL_GetREVID(void);
-
-/**
-  * @brief  返回 DEV_ID 寄存器值。
-  */
-uint32_t HAL_GetDEVID(void);
-
-/**
-  * @brief  使能 DBGMCU 低功耗调试。
-  */
-void HAL_DBGMCU_EnableDBGSleepMode(void);
-
-/**
-  * @brief  基于 SysTick 的毫秒级延时（阻塞）。
-  * @param  Delay 延时毫秒数
-  */
-void HAL_Delay(uint32_t Delay);
-
-/**
-  * @brief  返回自 HAL_Init 以来的毫秒计数（溢出回绕）。
-  * @retval 毫秒计数
-  */
-uint32_t HAL_GetTick(void);
-
-/**
-  * @brief  挂起 SysTick 中断。
-  */
-void HAL_SuspendTick(void);
-
-/**
-  * @brief  恢复 SysTick 中断。
-  */
-void HAL_ResumeTick(void);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* __STM32F1xx_HAL_H */
+
+

@@ -35,15 +35,9 @@
 
 
 /*
- * Arm Compiler 6.6 LTM (armclang)
+ * Arm Compiler 6 (armclang)
  */
-#elif defined (__ARMCC_VERSION) && (__ARMCC_VERSION >= 6010050) && (__ARMCC_VERSION < 6100100)
-  #include "cmsis_armclang_ltm.h"
-
-/*
- * Arm Compiler above 6.10.1 (armclang)
- */
-#elif defined (__ARMCC_VERSION) && (__ARMCC_VERSION >= 6100100)
+#elif defined (__ARMCC_VERSION) && (__ARMCC_VERSION >= 6010050)
   #include "cmsis_armclang.h"
 
 
@@ -97,7 +91,7 @@
   #ifndef   __PACKED_UNION
     #define __PACKED_UNION                         union __attribute__((packed))
   #endif
-  #ifndef   __UNALIGNED_UINT32
+  #ifndef   __UNALIGNED_UINT32        /* deprecated */
     struct __attribute__((packed)) T_UINT32 { uint32_t v; };
     #define __UNALIGNED_UINT32(x)                  (((struct T_UINT32 *)(x))->v)
   #endif
@@ -121,11 +115,8 @@
     #define __ALIGNED(x)                           __attribute__((aligned(x)))
   #endif
   #ifndef   __RESTRICT
-    #define __RESTRICT                             __restrict
-  #endif
-  #ifndef   __COMPILER_BARRIER
-    #warning No compiler specific solution for __COMPILER_BARRIER. __COMPILER_BARRIER is ignored.
-    #define __COMPILER_BARRIER()                   (void)0
+    #warning No compiler specific solution for __RESTRICT. __RESTRICT is ignored.
+    #define __RESTRICT
   #endif
 
 
@@ -135,9 +126,9 @@
 #elif defined ( __TASKING__ )
   /*
    * The CMSIS functions have been implemented as intrinsics in the compiler.
-   * Please use "carm -fomf -lc -lm" as CMSIS options.
+   * Please use "carm -?i" to get an up to date list of all intrinsics,
+   * Including the CMSIS ones.
    */
-  #include <cmsis_cm4.h>
 
   #ifndef   __ASM
     #define __ASM                                  __asm
@@ -169,7 +160,7 @@
   #ifndef   __PACKED_UNION
     #define __PACKED_UNION                         union __packed__
   #endif
-  #ifndef   __UNALIGNED_UINT32
+  #ifndef   __UNALIGNED_UINT32        /* deprecated */
     struct __packed__ T_UINT32 { uint32_t v; };
     #define __UNALIGNED_UINT32(x)                  (((struct T_UINT32 *)(x))->v)
   #endif
@@ -195,10 +186,6 @@
   #ifndef   __RESTRICT
     #warning No compiler specific solution for __RESTRICT. __RESTRICT is ignored.
     #define __RESTRICT
-  #endif
-  #ifndef   __COMPILER_BARRIER
-    #warning No compiler specific solution for __COMPILER_BARRIER. __COMPILER_BARRIER is ignored.
-    #define __COMPILER_BARRIER()                   (void)0
   #endif
 
 
@@ -240,7 +227,7 @@
   #ifndef   __PACKED_UNION
     #define __PACKED_UNION                         @packed union
   #endif
-  #ifndef   __UNALIGNED_UINT32
+  #ifndef   __UNALIGNED_UINT32        /* deprecated */
     @packed struct T_UINT32 { uint32_t v; };
     #define __UNALIGNED_UINT32(x)                  (((struct T_UINT32 *)(x))->v)
   #endif
@@ -268,10 +255,6 @@
     #warning No compiler specific solution for __RESTRICT. __RESTRICT is ignored.
     #define __RESTRICT
   #endif
-  #ifndef   __COMPILER_BARRIER
-    #warning No compiler specific solution for __COMPILER_BARRIER. __COMPILER_BARRIER is ignored.
-    #define __COMPILER_BARRIER()                   (void)0
-  #endif
 
 
 #else
@@ -280,3 +263,4 @@
 
 
 #endif /* __CMSIS_COMPILER_H */
+

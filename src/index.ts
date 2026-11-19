@@ -8,7 +8,7 @@ import {
 } from './core/context.js';
 import { generateProject } from './core/generator.js';
 import { LlmClient, LlmError } from './core/llm.js';
-import { defaultBuildSystem, planProject } from './core/planner.js';
+import { normalizeBuildSystem, planProject } from './core/planner.js';
 import { reviewGeneratedProject } from './core/reviewer.js';
 import {
   buildSkillsContext,
@@ -18,7 +18,7 @@ import {
   parseSkill,
   userSkillsDir,
 } from './core/skills.js';
-import { PLATFORM_LIST, detectDrivers, getPlatform } from './core/templates.js';
+import { PLATFORM_LIST, defaultBuildSystem, detectDrivers, getPlatform } from './core/templates.js';
 import type {
   AgentRunResult,
   Attachment,
@@ -161,8 +161,10 @@ export async function runEmbedForge(
     : matchSkills(requirement, availableSkills, { planText, forceSkills: [] });
   const skillsContext = buildSkillsContext(matchedSkills);
 
-  // 用户指定构建系统则覆盖（make / cmake / keil / platformio）
-  if (opts.buildSystem) plan.buildSystem = opts.buildSystem;
+  // 用户指定构建系统则覆盖；平台不支持该构建系统时回退到平台默认值
+  if (opts.buildSystem) {
+    plan.buildSystem = normalizeBuildSystem(plan.platform, opts.buildSystem);
+  }
 
   const generated = await generateProject(client, plan, extraContext, skillsContext);
 

@@ -14,7 +14,12 @@ function loadDirFiles(dir: string): { path: string; content: string }[] {
       const full = join(d, entry);
       const rel = base ? `${base}/${entry}` : entry;
       if (statSync(full).isDirectory()) walk(full, rel);
-      else out.push({ path: rel, content: readFileSync(full, 'utf8') });
+      else {
+        // 模板文件若被编辑器存成带 BOM 的 UTF-8，直接透传会让 Keil 打不开工程、
+        // 让 make 报 missing separator，这里统一剥掉
+        const raw = readFileSync(full, 'utf8');
+        out.push({ path: rel, content: raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw });
+      }
     }
   };
   walk(dir, '');
@@ -87,11 +92,15 @@ export function getDriverFiles(driverIds: string[]): { path: string; content: st
   return out;
 }
 
-/** 运行时加载 STM32 完整骨架（含 HAL/CMSIS/启动文件/链接脚本/Makefile） */
+/**
+ * 运行时加载 STM32 完整骨架（含 HAL/CMSIS/启动文件/链接脚本）。
+ * 注意：buildsystems/ 是构建系统模板的仓库，按用户选择单独注入，不能混进骨架。
+ */
 function loadStm32Skeleton(): { path: string; content: string }[] {
   try {
-    // 排除 build/ 目录（构建系统文件按选择单独注入）
-    return loadDirFiles(join(TEMPLATES_ROOT, 'stm32')).filter((f) => !f.path.startsWith('build/'));
+    return loadDirFiles(join(TEMPLATES_ROOT, 'stm32')).filter(
+      (f) => !f.path.startsWith('buildsystems/'),
+    );
   } catch {
     return [];
   }
@@ -102,13 +111,50 @@ export const BUILD_SYSTEMS = ['make', 'cmake', 'keil', 'platformio'] as const;
 export type BuildSystem = (typeof BUILD_SYSTEMS)[number];
 
 /**
- * 根据构建系统读取对应构建文件（从 templates/<platform>/build/<system>/ 递归读取）。
- * 返回路径相对于工程根目录。
+ * 各平台可选的构建系统。
+ * 未列出的平台其骨架里已经自带唯一一种构建文件（如 esp32/pico/zephyr 的 CMakeLists.txt、
+ * arduino 的 platformio.ini），因此不需要也不能再切换。
+ */
+const PLATFORM_BUILD_SYSTEMS: Partial<Record<PlatformId, readonly BuildSystem[]>> = {
+  stm32: ['make', 'cmake', 'keil', 'platformio'],
+};
+
+/** 查询某平台可切换的构建系统（空数组表示骨架已自带，不支持切换） */
+export function supportedBuildSystems(platform: string): readonly BuildSystem[] {
+  return PLATFORM_BUILD_SYSTEMS[platform as PlatformId] ?? [];
+}
+
+/** 平台对应的默认构建系统（写入 plan.buildSystem 与工程 README） */
+export function defaultBuildSystem(platform: PlatformId): string {
+  switch (platform) {
+    case 'esp32':
+    case 'pico':
+    case 'zephyr':
+      return 'cmake';
+    case 'arduino':
+      return 'platformio';
+    case 'micropython':
+      return 'none (interpreted)';
+    default:
+      return 'make';
+  }
+}
+
+/**
+ * 根据构建系统读取对应构建文件（从 templates/<platform>/buildsystems/<system>/ 递归读取）。
+ * 返回路径相对于工程根目录；路径与内容中的 {{NAME}} 占位符由调用方渲染。
+ *
+ * 目录名用 buildsystems/ 而不是 build/：templates/stm32/.gitignore 里的 `build/` 是用来
+ * 忽略**生成工程**的编译产物的，若构建模板也放在 build/ 下会被 git 直接忽略，永远提交不上去。
  */
 export function getBuildFiles(platform: string, buildSystem: string): { path: string; content: string }[] {
-  const sys = BUILD_SYSTEMS.includes(buildSystem as BuildSystem) ? buildSystem : 'make';
+  const supported = supportedBuildSystems(platform);
+  if (!supported.length) return [];
+  const sys = supported.includes(buildSystem as BuildSystem)
+    ? (buildSystem as BuildSystem)
+    : supported[0];
   try {
-    return loadDirFiles(join(TEMPLATES_ROOT, platform, 'build', sys));
+    return loadDirFiles(join(TEMPLATES_ROOT, platform, 'buildsystems', sys));
   } catch {
     return [];
   }
@@ -149,7 +195,7 @@ export const PLATFORM_TEMPLATES: Record<PlatformId, PlatformTemplate> = {
         path: 'Makefile',
         content: `# {{PROJECT_NAME}} - generic bare-metal C
 CC      ?= gcc
-TARGET  ?= {{PROJECT_NAME}}
+TARGET  ?= {{PROJECT_NAME_SAFE}}
 BUILD   = build
 SRC     = src
 INC     = include
@@ -199,7 +245,7 @@ board = uno
 framework = arduino
 monitor_speed = 115200
 build_flags =
-    -D{{PROJECT_NAME_UPPER}}_VERSION=1
+    -D{{PROJECT_NAME_SAFE_UPPER}}_VERSION=1
 `,
       },
       { path: '.gitignore', content: '.pio/\n.vscode/\n' },
@@ -234,7 +280,7 @@ build_flags =
 cmake_minimum_required(VERSION 3.16)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project({{PROJECT_NAME}})
+project({{PROJECT_NAME_SAFE}})
 `,
       },
       {
@@ -274,20 +320,20 @@ cmake_minimum_required(VERSION 3.13)
 # 初始化 Pico SDK（请设置 PICO_SDK_PATH 环境变量）
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
-project({{PROJECT_NAME}} C CXX ASM)
+project({{PROJECT_NAME_SAFE}} C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 
 pico_sdk_init()
 
-add_executable({{PROJECT_NAME}}
+add_executable({{PROJECT_NAME_SAFE}}
     src/main.c
     src/app.c
 )
 
-target_include_directories({{PROJECT_NAME}} PRIVATE include)
-target_link_libraries({{PROJECT_NAME}} pico_stdlib hardware_i2c hardware_spi hardware_uart)
+target_include_directories({{PROJECT_NAME_SAFE}} PRIVATE include)
+target_link_libraries({{PROJECT_NAME_SAFE}} pico_stdlib hardware_i2c hardware_spi hardware_uart)
 
-pico_add_extra_outputs({{PROJECT_NAME}})
+pico_add_extra_outputs({{PROJECT_NAME_SAFE}})
 `,
       },
       { path: '.gitignore', content: 'build/\n*.uf2\n*.elf\n*.o\n' },
@@ -310,7 +356,7 @@ pico_add_extra_outputs({{PROJECT_NAME}})
 # 根据目标芯片调整 MCU（atmega328p / atmega2560 / attiny85 ...）
 MCU      = atmega328p
 F_CPU    = 16000000UL
-TARGET   = {{PROJECT_NAME}}
+TARGET   = {{PROJECT_NAME_SAFE}}
 BUILD    = build
 PORT     ?= /dev/ttyUSB0
 PROGRAMMER ?= arduino
@@ -411,7 +457,7 @@ mpremote connect auto repl
 cmake_minimum_required(VERSION 3.20)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project({{PROJECT_NAME}})
+project({{PROJECT_NAME_SAFE}})
 
 target_include_directories(app PRIVATE include)
 target_sources(app PRIVATE

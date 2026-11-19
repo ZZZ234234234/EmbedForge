@@ -53,4 +53,43 @@ describe('writeProject', () => {
     expect(res.writtenCount).toBe(1);
     expect(readFileSync(join(out, 'README.md'), 'utf8')).toContain('LLM 超时');
   });
+
+  it('构建文件存在时 README 正常给出构建说明', () => {
+    const out = mkdtempSync(join(tmpdir(), 'ef-test-'));
+    dirs.push(out);
+    const plan = makePlan({ buildSystem: 'make' });
+    const files = [
+      { path: 'Makefile', status: 'ok' as const, content: 'all:\n' },
+      { path: 'Core/Src/main.c', status: 'ok' as const, content: 'int main(void){}\n' },
+    ];
+    writeProject(out, plan, files);
+    const readme = readFileSync(join(out, 'README.md'), 'utf8');
+    expect(readme).toContain('- 构建系统：make');
+    expect(readme).not.toContain('尚未提供');
+  });
+
+  it('构建文件缺失时 README 明确告警而不是指向不存在的 Makefile', () => {
+    const out = mkdtempSync(join(tmpdir(), 'ef-test-'));
+    dirs.push(out);
+    // 声称 cmake，但工程里只有 main.c，没有任何 CMakeLists.txt
+    const plan = makePlan({ buildSystem: 'cmake' });
+    const files = [
+      { path: 'Core/Src/main.c', status: 'ok' as const, content: 'int main(void){}\n' },
+    ];
+    writeProject(out, plan, files);
+    const readme = readFileSync(join(out, 'README.md'), 'utf8');
+    expect(readme).toContain('尚未提供');
+    expect(readme).toContain('未生成构建文件');
+  });
+
+  it('README 目录结构包含构建文件', () => {
+    const out = mkdtempSync(join(tmpdir(), 'ef-test-'));
+    dirs.push(out);
+    const plan = makePlan({ buildSystem: 'make' });
+    writeProject(out, plan, [
+      { path: 'Core/Src/main.c', status: 'ok' as const, content: 'int main(void){}\n' },
+    ]);
+    const readme = readFileSync(join(out, 'README.md'), 'utf8');
+    expect(readme).toContain('Makefile');
+  });
 });

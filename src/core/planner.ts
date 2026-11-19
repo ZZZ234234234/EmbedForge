@@ -1,7 +1,9 @@
 import type { LlmClient } from './llm.js';
 import { buildUserMessage } from './context.js';
-import { detectDrivers, getPlatform } from './templates.js';
+import { defaultBuildSystem, detectDrivers, getPlatform, supportedBuildSystems } from './templates.js';
 import type { Attachment, PlatformId, ProjectPlan } from './types.js';
+
+export { defaultBuildSystem } from './templates.js';
 
 const PLAN_SYSTEM_PROMPT = `你是一名有 10 年以上 ARM/MCU 量产项目经验的资深嵌入式系统架构师。用户会给出一个嵌入式开发需求，你需要输出一份结构化的工程规划 JSON，用于驱动代码生成。规划必须像真实项目立项评审一样严谨。
 
@@ -14,7 +16,7 @@ const PLAN_SYSTEM_PROMPT = `你是一名有 10 年以上 ARM/MCU 量产项目经
   "modules": ["功能模块列表，如 DHT11 温湿度采集（软件 I2C）"],
   "pinout": [{"pin": "引脚名如 PA0", "signal": "信号名如 DHT11_DATA", "note": "可选：电气要求（上拉/模式/复用外设）"}],
   "files": ["需要生成的源代码文件相对路径，如 Core/Src/main.c、Core/Inc/main.h、Core/Src/dht11.c、Core/Inc/dht11.h"],
-  "buildSystem": "make | cmake | platformio"
+  "buildSystem": "make | cmake | keil | platformio"
 }
 
 架构师要求：
@@ -63,6 +65,8 @@ export async function planProject(
           projectName: sanitizeName(plan.projectName),
           files: aiFiles.length ? aiFiles : template.defaultAiFiles,
           drivers: plan.platform === 'stm32' ? detectDrivers(requirement) : [],
+          // 模型常漏掉或答错构建系统，统一以平台实际支持的能力为准
+          buildSystem: normalizeBuildSystem(plan.platform, plan.buildSystem),
         };
       }
     }
@@ -119,18 +123,10 @@ export function fallbackPlan(requirement: string, platformHint?: string): Projec
   };
 }
 
-/** 平台对应的默认构建系统 */
-export function defaultBuildSystem(platform: PlatformId): string {
-  switch (platform) {
-    case 'esp32':
-    case 'pico':
-    case 'zephyr':
-      return 'cmake';
-    case 'arduino':
-      return 'platformio';
-    case 'micropython':
-      return 'none (interpreted)';
-    default:
-      return 'make';
-  }
+/** 平台对应的默认构建系统（实现已移到 templates.ts，这里再导出保持 API 兼容） */
+export function normalizeBuildSystem(platform: PlatformId, requested?: string): string {
+  const supported = supportedBuildSystems(platform);
+  if (!supported.length) return defaultBuildSystem(platform);
+  const wanted = (requested ?? '').trim().toLowerCase();
+  return supported.includes(wanted as never) ? wanted : defaultBuildSystem(platform);
 }

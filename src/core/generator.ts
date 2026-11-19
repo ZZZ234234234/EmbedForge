@@ -1,9 +1,23 @@
 import type { LlmClient } from './llm.js';
-import { getBuildFiles, getDriverFiles, PLATFORM_TEMPLATES, renderSkeleton } from './templates.js';
+import { defaultBuildSystem, getBuildFiles, getDriverFiles, PLATFORM_TEMPLATES, renderSkeleton } from './templates.js';
 import type { GeneratedFileResult, ProjectPlan } from './types.js';
 
 /** 并发生成上限 */
 const CONCURRENCY = 3;
+
+/**
+ * 生成可用于构建系统的 ASCII 标识符。
+ * 工程目录名允许中文（用户可读），但 CMake target / Keil 工程名 / 产物文件名必须是 ASCII，
+ * 否则 CMake 直接报 "Invalid target name"、Keil 也无法正常打开工程。
+ */
+function asciiName(name: string): string {
+  const cleaned = name
+    .replace(/[^\x20-\x7e]/g, '-') // 非 ASCII 字符（中文等）替换为连字符
+    .replace(/[^A-Za-z0-9_-]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return cleaned || 'embedded-project';
+}
 
 function buildSystemPrompt(plan: ProjectPlan, alreadyDone: string[], extraContext = '', skillsContext = ''): string {
   const template = PLATFORM_TEMPLATES[plan.platform];
@@ -105,14 +119,33 @@ export async function generateProject(
   const vars = {
     PROJECT_NAME: plan.projectName,
     PROJECT_NAME_UPPER: plan.projectName.toUpperCase().replace(/-/g, '_'),
+    // 构建系统标识符（CMake target、Keil 工程名、产物文件名、-D 宏名）只允许 ASCII：
+    // 中文工程目录名会让 CMake 报 Invalid target name、让 -D 宏名非法导致编译失败
+    PROJECT_NAME_SAFE: asciiName(plan.projectName),
+    PROJECT_NAME_SAFE_UPPER: asciiName(plan.projectName).toUpperCase().replace(/-/g, '_'),
   };
 
   const driverFiles = getDriverFiles(plan.drivers || []);
-  const buildFiles = getBuildFiles(plan.platform, plan.buildSystem || 'make');
+  let buildFiles = getBuildFiles(plan.platform, plan.buildSystem || 'make');
+  // 规划里的构建系统若没有对应模板，回退到该平台的默认构建系统，
+  // 避免 README 写着 make 而工程里根本没有 Makefile
+  if (!buildFiles.length && (plan.buildSystem || '').trim().toLowerCase() !== '') {
+    const fallback = getBuildFiles(plan.platform, defaultBuildSystem(plan.platform));
+    if (fallback.length) {
+      plan.buildSystem = defaultBuildSystem(plan.platform);
+      buildFiles = fallback;
+    }
+  }
+  // 构建文件的**路径**也可能带占位符（如 Keil 的 {{PROJECT_NAME}}.uvprojx），
+  // 路径与内容都要渲染，否则会写出字面量 {{PROJECT_NAME}}.uvprojx
+  const renderedBuildFiles = buildFiles.map((f) => ({
+    path: renderSkeleton(f.path, vars),
+    content: renderSkeleton(f.content, vars),
+  }));
   const skeletonPaths = new Set([
     ...template.skeleton.map((s) => s.path),
     ...driverFiles.map((d) => d.path),
-    ...buildFiles.map((b) => b.path),
+    ...renderedBuildFiles.map((b) => b.path),
   ]);
 
   const skeletonFiles: GeneratedFileResult[] = [
@@ -126,10 +159,10 @@ export async function generateProject(
       status: 'ok' as const,
       content: f.content,
     })),
-    ...buildFiles.map((f) => ({
+    ...renderedBuildFiles.map((f) => ({
       path: f.path,
       status: 'ok' as const,
-      content: renderSkeleton(f.content, vars),
+      content: f.content,
     })),
   ];
 

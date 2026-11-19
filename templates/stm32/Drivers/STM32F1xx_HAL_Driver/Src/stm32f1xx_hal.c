@@ -1,9 +1,21 @@
 /**
   ******************************************************************************
   * @file    stm32f1xx_hal.c
+  * @author  MCD Application Team
   * @brief   HAL module driver.
   *          This is the common part of the HAL initialization
   *
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2016 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
   @verbatim
   ==============================================================================
                      ##### How to use this driver #####
@@ -36,20 +48,21 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
+
 /** @defgroup HAL_Private_Constants HAL Private Constants
   * @{
   */
 /**
-  * @brief STM32F1xx HAL Driver version number
-  */
+ * @brief STM32F1xx HAL Driver version number
+   */
 #define __STM32F1xx_HAL_VERSION_MAIN   (0x01U) /*!< [31:24] main version */
 #define __STM32F1xx_HAL_VERSION_SUB1   (0x01U) /*!< [23:16] sub1 version */
-#define __STM32F1xx_HAL_VERSION_SUB2   (0x08U) /*!< [15:8]  sub2 version */
+#define __STM32F1xx_HAL_VERSION_SUB2   (0x0AU) /*!< [15:8]  sub2 version */
 #define __STM32F1xx_HAL_VERSION_RC     (0x00U) /*!< [7:0]  release candidate */
-#define __STM32F1xx_HAL_VERSION        ((__STM32F1xx_HAL_VERSION_MAIN << 24U)\
-                                       |(__STM32F1xx_HAL_VERSION_SUB1 << 16U)\
-                                       |(__STM32F1xx_HAL_VERSION_SUB2 << 8U )\
-                                       |(__STM32F1xx_HAL_VERSION_RC))
+#define __STM32F1xx_HAL_VERSION         ((__STM32F1xx_HAL_VERSION_MAIN << 24)\
+                                        |(__STM32F1xx_HAL_VERSION_SUB1 << 16)\
+                                        |(__STM32F1xx_HAL_VERSION_SUB2 << 8 )\
+                                        |(__STM32F1xx_HAL_VERSION_RC))
 
 #define IDCODE_DEVID_MASK    0x00000FFFU
 
@@ -59,6 +72,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
+
 /** @defgroup HAL_Private_Variables HAL Private Variables
   * @{
   */
@@ -68,27 +82,26 @@ HAL_TickFreqTypeDef uwTickFreq = HAL_TICK_FREQ_DEFAULT;  /* 1KHz */
 /**
   * @}
   */
-
 /* Private function prototypes -----------------------------------------------*/
-/* Exported functions --------------------------------------------------------*/
+/* Exported functions ---------------------------------------------------------*/
 
 /** @defgroup HAL_Exported_Functions HAL Exported Functions
   * @{
   */
 
 /** @defgroup HAL_Exported_Functions_Group1 Initialization and de-initialization Functions
-  *  @brief    Initialization and de-initialization functions
-  *
-  @verbatim
-  ==============================================================================
+ *  @brief    Initialization and de-initialization functions
+ *
+@verbatim
+ ===============================================================================
               ##### Initialization and de-initialization functions #####
-  ==============================================================================
-    [..]  This section provides functions allowing to:
-      (+) Initializes the Flash interface the NVIC allocation and initial clock
+ ===============================================================================
+   [..]  This section provides functions allowing to:
+      (+) Initializes the Flash interface, the NVIC allocation and initial clock
           configuration. It initializes the systick also when timeout is needed
           and the backup domain when enabled.
-      (+) De-Initializes common part of the HAL.
-      (+) Configure the time base source to have 1ms time base with a dedicated
+      (+) de-Initializes common part of the HAL.
+      (+) Configure The time base source to have 1ms time base with a dedicated
           Tick interrupt priority.
         (++) SysTick timer is used by default as source of time base, but user
              can eventually implement his proper time base source (a general purpose
@@ -105,7 +118,7 @@ HAL_TickFreqTypeDef uwTickFreq = HAL_TICK_FREQ_DEFAULT;  /* 1KHz */
             ISR process will be blocked.
        (++) functions affecting time base configurations are declared as __weak
              to make  override possible  in case of other  implementations in user file.
-  @endverbatim
+@endverbatim
   * @{
   */
 
@@ -129,7 +142,7 @@ HAL_TickFreqTypeDef uwTickFreq = HAL_TICK_FREQ_DEFAULT;  /* 1KHz */
 HAL_StatusTypeDef HAL_Init(void)
 {
   /* Configure Flash prefetch */
-#if (PREFETCH_ENABLE != 0U)
+#if (PREFETCH_ENABLE != 0)
 #if defined(STM32F101x6) || defined(STM32F101xB) || defined(STM32F101xE) || defined(STM32F101xG) || \
     defined(STM32F102x6) || defined(STM32F102xB) || \
     defined(STM32F103x6) || defined(STM32F103xB) || defined(STM32F103xE) || defined(STM32F103xG) || \
@@ -154,8 +167,9 @@ HAL_StatusTypeDef HAL_Init(void)
 }
 
 /**
-  * @brief  This function de-Initializes common part of the HAL and stops the systick.
-  *         This function is optional.
+  * @brief This function de-Initializes common part of the HAL and stops the systick.
+  *        of time base.
+  * @note This function is optional.
   * @retval HAL status
   */
 HAL_StatusTypeDef HAL_DeInit(void)
@@ -167,8 +181,10 @@ HAL_StatusTypeDef HAL_DeInit(void)
   __HAL_RCC_APB2_FORCE_RESET();
   __HAL_RCC_APB2_RELEASE_RESET();
 
+#if defined(STM32F105xC) || defined(STM32F107xC)
   __HAL_RCC_AHB_FORCE_RESET();
   __HAL_RCC_AHB_RELEASE_RESET();
+#endif
 
   /* De-Init the low level hardware */
   HAL_MspDeInit();
@@ -245,10 +261,10 @@ __weak HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
 /** @defgroup HAL_Exported_Functions_Group2 HAL Control functions
   *  @brief    HAL Control functions
   *
-  @verbatim
-  ==============================================================================
+@verbatim
+ ===============================================================================
                       ##### HAL Control functions #####
-  ==============================================================================
+ ===============================================================================
     [..]  This section provides functions allowing to:
       (+) Provide a tick value in millisecond
       (+) Provide a blocking delay in millisecond
@@ -261,7 +277,7 @@ __weak HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
       (+) Enable/Disable Debug module during STOP mode
       (+) Enable/Disable Debug module during STANDBY mode
 
-  @endverbatim
+@endverbatim
   * @{
   */
 
@@ -281,7 +297,7 @@ __weak void HAL_IncTick(void)
 
 /**
   * @brief Provides a tick value in millisecond.
-  * @note This function is declared as __weak to be overwritten in case of other
+  * @note  This function is declared as __weak to be overwritten in case of other
   *       implementations in user file.
   * @retval tick value
   */
@@ -301,7 +317,7 @@ uint32_t HAL_GetTickPrio(void)
 
 /**
   * @brief Set new tick Freq.
-  * @retval Status
+  * @retval status
   */
 HAL_StatusTypeDef HAL_SetTickFreq(HAL_TickFreqTypeDef Freq)
 {
@@ -333,7 +349,8 @@ HAL_StatusTypeDef HAL_SetTickFreq(HAL_TickFreqTypeDef Freq)
 
 /**
   * @brief Return tick frequency.
-  * @retval tick period in Hz
+  * @retval Tick frequency.
+  *         Value of @ref HAL_TickFreqTypeDef.
   */
 HAL_TickFreqTypeDef HAL_GetTickFreq(void)
 {
@@ -401,7 +418,7 @@ __weak void HAL_ResumeTick(void)
 
 /**
   * @brief  Returns the HAL revision
-  * @retval version : 0xXYZR (8bits for each decimal, R for RC)
+  * @retval version 0xXYZR (8bits for each decimal, R for RC)
   */
 uint32_t HAL_GetHalVersion(void)
 {
@@ -409,21 +426,62 @@ uint32_t HAL_GetHalVersion(void)
 }
 
 /**
-  * @brief  Returns the device revision identifier.
+  * @brief Returns the device revision identifier.
+  * Note: On devices STM32F10xx8 and STM32F10xxB,
+  *                  STM32F101xC/D/E and STM32F103xC/D/E,
+  *                  STM32F101xF/G and STM32F103xF/G
+  *                  STM32F10xx4 and STM32F10xx6
+  *       Debug registers DBGMCU_IDCODE and DBGMCU_CR are accessible only in
+  *       debug mode (not accessible by the user software in normal mode).
+  *       Refer to errata sheet of these devices for more details.
   * @retval Device revision identifier
   */
 uint32_t HAL_GetREVID(void)
 {
-  return ((DBGMCU->IDCODE) >> 16U);
+  return ((DBGMCU->IDCODE) >> DBGMCU_IDCODE_REV_ID_Pos);
 }
 
 /**
   * @brief  Returns the device identifier.
+  * Note: On devices STM32F10xx8 and STM32F10xxB,
+  *                  STM32F101xC/D/E and STM32F103xC/D/E,
+  *                  STM32F101xF/G and STM32F103xF/G
+  *                  STM32F10xx4 and STM32F10xx6
+  *       Debug registers DBGMCU_IDCODE and DBGMCU_CR are accessible only in
+  *       debug mode (not accessible by the user software in normal mode).
+  *       Refer to errata sheet of these devices for more details.
   * @retval Device identifier
   */
 uint32_t HAL_GetDEVID(void)
 {
   return ((DBGMCU->IDCODE) & IDCODE_DEVID_MASK);
+}
+
+/**
+  * @brief  Returns first word of the unique device identifier (UID based on 96 bits)
+  * @retval Device identifier
+  */
+uint32_t HAL_GetUIDw0(void)
+{
+   return(READ_REG(*((uint32_t *)UID_BASE)));
+}
+
+/**
+  * @brief  Returns second word of the unique device identifier (UID based on 96 bits)
+  * @retval Device identifier
+  */
+uint32_t HAL_GetUIDw1(void)
+{
+   return(READ_REG(*((uint32_t *)(UID_BASE + 4U))));
+}
+
+/**
+  * @brief  Returns third word of the unique device identifier (UID based on 96 bits)
+  * @retval Device identifier
+  */
+uint32_t HAL_GetUIDw2(void)
+{
+   return(READ_REG(*((uint32_t *)(UID_BASE + 8U))));
 }
 
 /**
@@ -437,6 +495,13 @@ void HAL_DBGMCU_EnableDBGSleepMode(void)
 
 /**
   * @brief  Disable the Debug Module during SLEEP mode
+  * Note: On devices STM32F10xx8 and STM32F10xxB,
+  *                  STM32F101xC/D/E and STM32F103xC/D/E,
+  *                  STM32F101xF/G and STM32F103xF/G
+  *                  STM32F10xx4 and STM32F10xx6
+  *       Debug registers DBGMCU_IDCODE and DBGMCU_CR are accessible only in
+  *       debug mode (not accessible by the user software in normal mode).
+  *       Refer to errata sheet of these devices for more details.
   * @retval None
   */
 void HAL_DBGMCU_DisableDBGSleepMode(void)
@@ -446,6 +511,27 @@ void HAL_DBGMCU_DisableDBGSleepMode(void)
 
 /**
   * @brief  Enable the Debug Module during STOP mode
+  * Note: On devices STM32F10xx8 and STM32F10xxB,
+  *                  STM32F101xC/D/E and STM32F103xC/D/E,
+  *                  STM32F101xF/G and STM32F103xF/G
+  *                  STM32F10xx4 and STM32F10xx6
+  *       Debug registers DBGMCU_IDCODE and DBGMCU_CR are accessible only in
+  *       debug mode (not accessible by the user software in normal mode).
+  *       Refer to errata sheet of these devices for more details.
+  * Note: On all STM32F1 devices:
+  *       If the system tick timer interrupt is enabled during the Stop mode
+  *       debug (DBG_STOP bit set in the DBGMCU_CR register ), it will wakeup
+  *       the system from Stop mode.
+  *       Workaround: To debug the Stop mode, disable the system tick timer
+  *       interrupt.
+  *       Refer to errata sheet of these devices for more details.
+  * Note: On all STM32F1 devices:
+  *       If the system tick timer interrupt is enabled during the Stop mode
+  *       debug (DBG_STOP bit set in the DBGMCU_CR register ), it will wakeup
+  *       the system from Stop mode.
+  *       Workaround: To debug the Stop mode, disable the system tick timer
+  *       interrupt.
+  *       Refer to errata sheet of these devices for more details.
   * @retval None
   */
 void HAL_DBGMCU_EnableDBGStopMode(void)
@@ -455,6 +541,13 @@ void HAL_DBGMCU_EnableDBGStopMode(void)
 
 /**
   * @brief  Disable the Debug Module during STOP mode
+  * Note: On devices STM32F10xx8 and STM32F10xxB,
+  *                  STM32F101xC/D/E and STM32F103xC/D/E,
+  *                  STM32F101xF/G and STM32F103xF/G
+  *                  STM32F10xx4 and STM32F10xx6
+  *       Debug registers DBGMCU_IDCODE and DBGMCU_CR are accessible only in
+  *       debug mode (not accessible by the user software in normal mode).
+  *       Refer to errata sheet of these devices for more details.
   * @retval None
   */
 void HAL_DBGMCU_DisableDBGStopMode(void)
@@ -464,6 +557,13 @@ void HAL_DBGMCU_DisableDBGStopMode(void)
 
 /**
   * @brief  Enable the Debug Module during STANDBY mode
+  * Note: On devices STM32F10xx8 and STM32F10xxB,
+  *                  STM32F101xC/D/E and STM32F103xC/D/E,
+  *                  STM32F101xF/G and STM32F103xF/G
+  *                  STM32F10xx4 and STM32F10xx6
+  *       Debug registers DBGMCU_IDCODE and DBGMCU_CR are accessible only in
+  *       debug mode (not accessible by the user software in normal mode).
+  *       Refer to errata sheet of these devices for more details.
   * @retval None
   */
 void HAL_DBGMCU_EnableDBGStandbyMode(void)
@@ -473,6 +573,13 @@ void HAL_DBGMCU_EnableDBGStandbyMode(void)
 
 /**
   * @brief  Disable the Debug Module during STANDBY mode
+  * Note: On devices STM32F10xx8 and STM32F10xxB,
+  *                  STM32F101xC/D/E and STM32F103xC/D/E,
+  *                  STM32F101xF/G and STM32F103xF/G
+  *                  STM32F10xx4 and STM32F10xx6
+  *       Debug registers DBGMCU_IDCODE and DBGMCU_CR are accessible only in
+  *       debug mode (not accessible by the user software in normal mode).
+  *       Refer to errata sheet of these devices for more details.
   * @retval None
   */
 void HAL_DBGMCU_DisableDBGStandbyMode(void)
@@ -497,4 +604,4 @@ void HAL_DBGMCU_DisableDBGStandbyMode(void)
   * @}
   */
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+

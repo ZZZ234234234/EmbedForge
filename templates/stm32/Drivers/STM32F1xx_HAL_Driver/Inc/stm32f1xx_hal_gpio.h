@@ -17,8 +17,8 @@
   */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __STM32F1xx_HAL_GPIO_H
-#define __STM32F1xx_HAL_GPIO_H
+#ifndef STM32F1xx_HAL_GPIO_H
+#define STM32F1xx_HAL_GPIO_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -97,7 +97,7 @@ typedef enum
 #define GPIO_PIN_15                ((uint16_t)0x8000)  /* Pin 15 selected   */
 #define GPIO_PIN_All               ((uint16_t)0xFFFF)  /* All pins selected */
 
-#define GPIO_PIN_MASK              (0x0000FFFFu) /* PIN mask for assert test */
+#define GPIO_PIN_MASK              0x0000FFFFu /* PIN mask for assert test */
 /**
   * @}
   */
@@ -112,32 +112,35 @@ typedef enum
   *           - Z  : IO Direction mode (Input, Output, Alternate or Analog)
   * @{
   */
-#define  GPIO_MODE_INPUT                        (0x00000000u)   /*!< Input Floating Mode                   */
-#define  GPIO_MODE_OUTPUT_PP                    (0x00000001u)   /*!< Output Push Pull Mode                 */
-#define  GPIO_MODE_OUTPUT_OD                    (0x00000011u)   /*!< Output Open Drain Mode                */
-#define  GPIO_MODE_AF_PP                        (0x00000002u)   /*!< Alternate Function Push Pull Mode     */
-#define  GPIO_MODE_AF_OD                        (0x00000012u)   /*!< Alternate Function Open Drain Mode    */
+#define  GPIO_MODE_INPUT                        0x00000000u   /*!< Input Floating Mode                   */
+#define  GPIO_MODE_OUTPUT_PP                    0x00000001u   /*!< Output Push Pull Mode                 */
+#define  GPIO_MODE_OUTPUT_OD                    0x00000011u   /*!< Output Open Drain Mode                */
+#define  GPIO_MODE_AF_PP                        0x00000002u   /*!< Alternate Function Push Pull Mode     */
+#define  GPIO_MODE_AF_OD                        0x00000012u   /*!< Alternate Function Open Drain Mode    */
+#define  GPIO_MODE_AF_INPUT                     GPIO_MODE_INPUT          /*!< Alternate Function Input Mode         */
 
-#define  GPIO_MODE_ANALOG                       (0x00000003u)   /*!< Analog Mode  */
+#define  GPIO_MODE_ANALOG                       0x00000003u   /*!< Analog Mode  */
 
-#define  GPIO_MODE_IT_RISING                    (0x10110000u)   /*!< External Interrupt Mode with Rising edge trigger detection          */
-#define  GPIO_MODE_IT_FALLING                   (0x10210000u)   /*!< External Interrupt Mode with Falling edge trigger detection         */
-#define  GPIO_MODE_IT_RISING_FALLING            (0x10310000u)   /*!< External Interrupt Mode with Rising/Falling edge trigger detection  */
+#define  GPIO_MODE_IT_RISING                    0x10110000u   /*!< External Interrupt Mode with Rising edge trigger detection          */
+#define  GPIO_MODE_IT_FALLING                   0x10210000u   /*!< External Interrupt Mode with Falling edge trigger detection         */
+#define  GPIO_MODE_IT_RISING_FALLING            0x10310000u   /*!< External Interrupt Mode with Rising/Falling edge trigger detection  */
 
-#define  GPIO_MODE_EVT_RISING                   (0x10120000u)   /*!< External Event Mode with Rising edge trigger detection               */
-#define  GPIO_MODE_EVT_FALLING                  (0x10220000u)   /*!< External Event Mode with Falling edge trigger detection              */
-#define  GPIO_MODE_EVT_RISING_FALLING           (0x10320000u)   /*!< External Event Mode with Rising/Falling edge trigger detection       */
+#define  GPIO_MODE_EVT_RISING                   0x10120000u   /*!< External Event Mode with Rising edge trigger detection               */
+#define  GPIO_MODE_EVT_FALLING                  0x10220000u   /*!< External Event Mode with Falling edge trigger detection              */
+#define  GPIO_MODE_EVT_RISING_FALLING           0x10320000u   /*!< External Event Mode with Rising/Falling edge trigger detection       */
+
 /**
   * @}
   */
 
-/** @defgroup GPIO_speed_define GPIO speed define
+/** @defgroup GPIO_speed_define  GPIO speed define
   * @brief GPIO Output Maximum frequency
   * @{
   */
-#define  GPIO_SPEED_FREQ_LOW              (GPIO_CRL_MODE0_1) /*!< Low speed     */
-#define  GPIO_SPEED_FREQ_MEDIUM           (GPIO_CRL_MODE0_0) /*!< Medium speed  */
-#define  GPIO_SPEED_FREQ_HIGH             (GPIO_CRL_MODE0)   /*!< High speed    */
+#define  GPIO_SPEED_FREQ_LOW              (GPIO_CRL_MODE0_1) /*!< Low speed */
+#define  GPIO_SPEED_FREQ_MEDIUM           (GPIO_CRL_MODE0_0) /*!< Medium speed */
+#define  GPIO_SPEED_FREQ_HIGH             (GPIO_CRL_MODE0)   /*!< High speed */
+
 /**
   * @}
   */
@@ -146,9 +149,9 @@ typedef enum
   * @brief GPIO Pull-Up or Pull-Down Activation
   * @{
   */
-#define  GPIO_NOPULL        (0x00000000u)   /*!< No Pull-up or Pull-down activation  */
-#define  GPIO_PULLUP        (0x00000001u)   /*!< Pull-up activation                  */
-#define  GPIO_PULLDOWN      (0x00000002u)   /*!< Pull-down activation                */
+#define  GPIO_NOPULL        0x00000000u   /*!< No Pull-up or Pull-down activation  */
+#define  GPIO_PULLUP        0x00000001u   /*!< Pull-up activation                  */
+#define  GPIO_PULLDOWN      0x00000002u   /*!< Pull-down activation                */
 /**
   * @}
   */
@@ -164,7 +167,7 @@ typedef enum
 
 /**
   * @brief  Checks whether the specified EXTI line flag is set or not.
-  * @param  __EXTI_LINE__ specifies the EXTI line flag to check.
+  * @param  __EXTI_LINE__: specifies the EXTI line flag to check.
   *         This parameter can be GPIO_PIN_x where x can be(0..15)
   * @retval The new state of __EXTI_LINE__ (SET or RESET).
   */
@@ -172,7 +175,7 @@ typedef enum
 
 /**
   * @brief  Clears the EXTI's line pending flags.
-  * @param  __EXTI_LINE__ specifies the EXTI lines flags to clear.
+  * @param  __EXTI_LINE__: specifies the EXTI lines flags to clear.
   *         This parameter can be any combination of GPIO_PIN_x where x can be (0..15)
   * @retval None
   */
@@ -180,7 +183,7 @@ typedef enum
 
 /**
   * @brief  Checks whether the specified EXTI line is asserted or not.
-  * @param  __EXTI_LINE__ specifies the EXTI line to check.
+  * @param  __EXTI_LINE__: specifies the EXTI line to check.
   *          This parameter can be GPIO_PIN_x where x can be(0..15)
   * @retval The new state of __EXTI_LINE__ (SET or RESET).
   */
@@ -188,7 +191,7 @@ typedef enum
 
 /**
   * @brief  Clears the EXTI's line pending bits.
-  * @param  __EXTI_LINE__ specifies the EXTI lines to clear.
+  * @param  __EXTI_LINE__: specifies the EXTI lines to clear.
   *          This parameter can be any combination of GPIO_PIN_x where x can be (0..15)
   * @retval None
   */
@@ -196,7 +199,7 @@ typedef enum
 
 /**
   * @brief  Generates a Software interrupt on selected EXTI line.
-  * @param  __EXTI_LINE__ specifies the EXTI line to check.
+  * @param  __EXTI_LINE__: specifies the EXTI line to check.
   *          This parameter can be GPIO_PIN_x where x can be(0..15)
   * @retval None
   */
@@ -228,45 +231,26 @@ void  HAL_GPIO_DeInit(GPIO_TypeDef  *GPIOx, uint32_t GPIO_Pin);
   */
 /* IO operation functions *****************************************************/
 GPIO_PinState HAL_GPIO_ReadPin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
-void          HAL_GPIO_WritePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState);
-void          HAL_GPIO_TogglePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
+void HAL_GPIO_WritePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState);
+void HAL_GPIO_TogglePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
 HAL_StatusTypeDef HAL_GPIO_LockPin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
-void          HAL_GPIO_EXTI_IRQHandler(uint16_t GPIO_Pin);
-void          HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
-/**
-  * @}
-  */
+void HAL_GPIO_EXTI_IRQHandler(uint16_t GPIO_Pin);
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 
 /**
   * @}
   */
 
+/**
+  * @}
+  */
 /* Private types -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 /* Private constants ---------------------------------------------------------*/
 /** @defgroup GPIO_Private_Constants GPIO Private Constants
   * @{
   */
-#define GPIO_MODE_Pos                           0u
-#define GPIO_MODE                               (0x3uL << GPIO_MODE_Pos)
-#define MODE_INPUT                              (0x0uL << GPIO_MODE_Pos)
-#define MODE_OUTPUT                             (0x1uL << GPIO_MODE_Pos)
-#define MODE_AF                                 (0x2uL << GPIO_MODE_Pos)
-#define MODE_ANALOG                             (0x3uL << GPIO_MODE_Pos)
-#define OUTPUT_TYPE_Pos                         4u
-#define OUTPUT_TYPE                             (0x1uL << OUTPUT_TYPE_Pos)
-#define OUTPUT_PP                               (0x0uL << OUTPUT_TYPE_Pos)
-#define OUTPUT_OD                               (0x1uL << OUTPUT_TYPE_Pos)
-#define EXTI_MODE_Pos                           16u
-#define EXTI_MODE                               (0x3uL << EXTI_MODE_Pos)
-#define EXTI_IT                                 (0x1uL << EXTI_MODE_Pos)
-#define EXTI_EVT                                (0x2uL << EXTI_MODE_Pos)
-#define TRIGGER_MODE_Pos                        20u
-#define TRIGGER_MODE                            (0x7uL << TRIGGER_MODE_Pos)
-#define TRIGGER_RISING                          (0x1uL << TRIGGER_MODE_Pos)
-#define TRIGGER_FALLING                         (0x2uL << TRIGGER_MODE_Pos)
-#define TRIGGER_HIGH                            (0x4uL << TRIGGER_MODE_Pos)
-#define TRIGGER_LOW                             (0x8uL << TRIGGER_MODE_Pos)
+
 /**
   * @}
   */
@@ -290,8 +274,7 @@ void          HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
                             ((MODE) == GPIO_MODE_EVT_RISING_FALLING) ||\
                             ((MODE) == GPIO_MODE_ANALOG))
 #define IS_GPIO_SPEED(SPEED) (((SPEED) == GPIO_SPEED_FREQ_LOW) || \
-                              ((SPEED) == GPIO_SPEED_FREQ_MEDIUM) || \
-                              ((SPEED) == GPIO_SPEED_FREQ_HIGH))
+                              ((SPEED) == GPIO_SPEED_FREQ_MEDIUM) || ((SPEED) == GPIO_SPEED_FREQ_HIGH))
 #define IS_GPIO_PULL(PULL) (((PULL) == GPIO_NOPULL) || ((PULL) == GPIO_PULLUP) || \
                             ((PULL) == GPIO_PULLDOWN))
 /**
@@ -319,4 +302,5 @@ void          HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 }
 #endif
 
-#endif /* __STM32F1xx_HAL_GPIO_H */
+#endif /* STM32F1xx_HAL_GPIO_H */
+

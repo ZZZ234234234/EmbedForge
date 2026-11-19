@@ -1,96 +1,82 @@
 /**
   ******************************************************************************
   * @file    system_stm32f1xx.h
-  * @brief   CMSIS Cortex-M3 Device System Source File for STM32F1xx devices.
+  * @author  MCD Application Team
+  * @brief   CMSIS Cortex-M3 Device Peripheral Access Layer System Header File.
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2017-2021 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
   ******************************************************************************
   */
 
-#ifndef __SYSTEM_STM32F1XX_H
-#define __SYSTEM_STM32F1XX_H
+/** @addtogroup CMSIS
+  * @{
+  */
+
+/** @addtogroup stm32f10x_system
+  * @{
+  */  
+  
+/**
+  * @brief Define to prevent recursive inclusion
+  */
+#ifndef __SYSTEM_STM32F10X_H
+#define __SYSTEM_STM32F10X_H
 
 #ifdef __cplusplus
-extern "C" {
-#endif
+ extern "C" {
+#endif 
 
-#include <stdint.h>
-
-/** @addtogroup STM32F1xx_System
+/** @addtogroup STM32F10x_System_Includes
   * @{
   */
-
-/* Exported constants --------------------------------------------------------*/
-
-/** @addtogroup STM32F1xx_System_Exported_Constants
-  * @{
-  */
-
-/**
-  * @brief Uncomment the line below to use the default SystemInit() function
-  *        provided by the CMSIS device file. Otherwise, the user must provide
-  *        his own SystemInit() function.
-  */
-/* #define USER_VECT_TAB_ADDRESS */
-
-/**
-  * @brief Vector Table base offset field.
-  *        This value must be a multiple of 0x200.
-  */
-#if defined(USER_VECT_TAB_ADDRESS)
-#define VECT_TAB_OFFSET  0x00000000U
-#endif
 
 /**
   * @}
   */
 
-/* Exported variables --------------------------------------------------------*/
 
-/** @addtogroup STM32F1xx_System_Exported_Variables
+/** @addtogroup STM32F10x_System_Exported_types
   * @{
   */
 
-/**
-  * @brief System Clock Frequency (Core Clock)
-  */
-extern uint32_t SystemCoreClock;
+extern uint32_t SystemCoreClock;          /*!< System Clock Frequency (Core Clock) */
+extern const uint8_t  AHBPrescTable[16U];  /*!< AHB prescalers table values */
+extern const uint8_t  APBPrescTable[8U];   /*!< APB prescalers table values */
 
 /**
   * @}
   */
 
-/* Exported functions --------------------------------------------------------*/
-
-/** @addtogroup STM32F1xx_System_Exported_Functions
+/** @addtogroup STM32F10x_System_Exported_Constants
   * @{
   */
-
-/**
-  * @brief  Setup the microcontroller system.
-  *         Initialize the Embedded Flash Interface, the PLL and update the
-  *         SystemCoreClock variable.
-  * @note   This function should be used only after reset.
-  * @param  None
-  * @retval None
-  */
-void SystemInit(void);
-
-/**
-  * @brief  Update SystemCoreClock variable according to Clock Register Values.
-  *         The SystemCoreClock variable contains the core clock (HCLK), it can
-  *         be used by the user application to setup the SysTick timer or
-  *         configure other parameters.
-  * @note   Each time the core clock (HCLK) changes, this function must be called
-  *         to update SystemCoreClock variable value. Otherwise, any
-  *         configuration based on this variable will be incorrect.
-  * @param  None
-  * @retval None
-  */
-void SystemCoreClockUpdate(void);
 
 /**
   * @}
   */
 
+/** @addtogroup STM32F10x_System_Exported_Macros
+  * @{
+  */
+
+/**
+  * @}
+  */
+
+/** @addtogroup STM32F10x_System_Exported_Functions
+  * @{
+  */
+  
+extern void SystemInit(void);
+extern void SystemCoreClockUpdate(void);
 /**
   * @}
   */
@@ -99,4 +85,12 @@ void SystemCoreClockUpdate(void);
 }
 #endif
 
-#endif /* __SYSTEM_STM32F1XX_H */
+#endif /*__SYSTEM_STM32F10X_H */
+
+/**
+  * @}
+  */
+  
+/**
+  * @}
+  */

@@ -1,4 +1,3 @@
-```c
 /**
   ******************************************************************************
   * @file    stm32f1xx_hal_tim_ex.h
@@ -44,6 +43,7 @@ extern "C" {
 /**
   * @brief  TIM Hall sensor Configuration Structure definition
   */
+
 typedef struct
 {
   uint32_t IC1Polarity;         /*!< Specifies the active edge of the input signal.
@@ -58,669 +58,204 @@ typedef struct
   uint32_t Commutation_Delay;   /*!< Specifies the pulse value to be loaded into the Capture Compare Register.
                                      This parameter can be a number between Min_Data = 0x0000 and Max_Data = 0xFFFF */
 } TIM_HallSensor_InitTypeDef;
-
 /**
-  * @brief  TIM Break input(s) and Dead time configuration Structure definition
-  * @note   2 break inputs can be configured (BKIN and BKIN2) with configurable
-  *        filter and polarity.
+  * @}
   */
-typedef struct
-{
-  uint32_t OffStateRunMode;     /*!< TIM off state in run mode, This parameter can be a value of @ref TIM_OSSR_Off_State_Selection_for_Run_mode_state */
+/* End of exported types -----------------------------------------------------*/
 
-  uint32_t OffStateIDLEMode;    /*!< TIM off state in IDLE mode, This parameter can be a value of @ref TIM_OSSI_Off_State_Selection_for_Idle_mode_state */
-
-  uint32_t LockLevel;           /*!< TIM Lock level, This parameter can be a value of @ref TIM_Lock_level */
-
-  uint32_t DeadTime;            /*!< TIM dead Time, This parameter can be a number between Min_Data = 0x00 and Max_Data = 0xFF */
-
-  uint32_t BreakState;          /*!< TIM Break State, This parameter can be a value of @ref TIM_Break_Input_enable_disable */
-
-  uint32_t BreakPolarity;       /*!< TIM Break input polarity, This parameter can be a value of @ref TIM_Break_Polarity */
-
-  uint32_t AutomaticOutput;     /*!< TIM Automatic Output Enable state, This parameter can be a value of @ref TIM_AOE_Bit_Set_Reset */
-} TIM_BreakDeadTimeConfigTypeDef;
-
-/**
-  * @brief  TIM Master configuration Structure definition
+/* Exported constants --------------------------------------------------------*/
+/** @defgroup TIMEx_Exported_Constants TIM Extended Exported Constants
+  * @{
   */
-typedef struct
-{
-  uint32_t  MasterOutputTrigger;   /*!< Trigger output (TRGO) selection.
-                                        This parameter can be a value of @ref TIM_Master_Mode_Selection */
 
-  uint32_t  MasterSlaveMode;       /*!< Master/slave mode selection.
-                                        This parameter can be a value of @ref TIM_Master_Slave_Mode */
-} TIM_MasterConfigTypeDef;
-
-/**
-  * @brief  TIM Slave configuration Structure definition
+/** @defgroup TIMEx_Remap TIM Extended Remapping
+  * @{
   */
-typedef struct
-{
-  uint32_t  SlaveMode;         /*!< Slave mode selection.
-                                    This parameter can be a value of @ref TIM_Slave_Mode */
-
-  uint32_t  InputTrigger;      /*!< Input Trigger source.
-                                    This parameter can be a value of @ref TIM_Trigger_Selection */
-
-  uint32_t  TriggerPolarity;   /*!< Input Trigger polarity.
-                                    This parameter can be a value of @ref TIM_Trigger_Polarity */
-
-  uint32_t  TriggerPrescaler;  /*!< Input trigger prescaler.
-                                    This parameter can be a value of @ref TIM_Trigger_Prescaler */
-
-  uint32_t  TriggerFilter;     /*!< Input trigger filter.
-                                    This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-} TIM_SlaveConfigTypeDef;
-
 /**
-  * @brief  TIM Input Capture configuration Structure definition
+  * @}
   */
-typedef struct
-{
-  uint32_t  ICPolarity;        /*!< Specifies the active edge of the input signal.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Polarity */
-
-  uint32_t ICSelection;        /*!< Specifies the input.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Selection */
-
-  uint32_t ICPrescaler;        /*!< Specifies the Input Capture Prescaler.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Prescaler */
-
-  uint32_t ICFilter;           /*!< Specifies the input capture filter.
-                                    This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-} TIM_IC_InitTypeDef;
 
 /**
-  * @brief  TIM Encoder configuration Structure definition
+  * @}
   */
-typedef struct
-{
-  uint32_t EncoderMode;        /*!< Specifies the encoder mode.
-                                    This parameter can be a value of @ref TIM_Encoder_Mode */
+/* End of exported constants -------------------------------------------------*/
 
-  uint32_t IC1Polarity;        /*!< Specifies the active edge of the input signal.
-                                    This parameter can be a value of @ref TIM_Encoder_Input_Polarity */
-
-  uint32_t IC1Selection;       /*!< Specifies the input.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Selection */
-
-  uint32_t IC1Prescaler;       /*!< Specifies the Input Capture Prescaler.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Prescaler */
-
-  uint32_t IC1Filter;          /*!< Specifies the input capture filter.
-                                    This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-
-  uint32_t IC2Polarity;        /*!< Specifies the active edge of the input signal.
-                                    This parameter can be a value of @ref TIM_Encoder_Input_Polarity */
-
-  uint32_t IC2Selection;       /*!< Specifies the input.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Selection */
-
-  uint32_t IC2Prescaler;       /*!< Specifies the Input Capture Prescaler.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Prescaler */
-
-  uint32_t IC2Filter;          /*!< Specifies the input capture filter.
-                                    This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-} TIM_Encoder_InitTypeDef;
-
-/**
-  * @brief  TIM Clock Configuration Handle Structure definition
+/* Exported macro ------------------------------------------------------------*/
+/** @defgroup TIMEx_Exported_Macros TIM Extended Exported Macros
+  * @{
   */
-typedef struct
-{
-  uint32_t ClockSource;     /*!< TIM clock sources.
-                                 This parameter can be a value of @ref TIM_Clock_Source */
-
-  uint32_t ClockPolarity;   /*!< TIM clock polarity.
-                                 This parameter can be a value of @ref TIM_Clock_Polarity */
-
-  uint32_t ClockPrescaler;  /*!< TIM clock prescaler.
-                                 This parameter can be a value of @ref TIM_Clock_Prescaler */
-
-  uint32_t ClockFilter;     /*!< TIM clock filter.
-                                 This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-} TIM_ClockConfigTypeDef;
 
 /**
-  * @brief  TIM Clear Input configuration Handle Structure definition
+  * @}
   */
-typedef struct
-{
-  uint32_t ClearInputState;      /*!< TIM clear Input state.
-                                      This parameter can be ENABLE or DISABLE */
+/* End of exported macro -----------------------------------------------------*/
 
-  uint32_t ClearInputSource;     /*!< TIM clear Input sources.
-                                      This parameter can be a value of @ref TIM_ClearInput_Source */
-
-  uint32_t ClearInputPolarity;   /*!< TIM Clear Input polarity.
-                                      This parameter can be a value of @ref TIM_ClearInput_Polarity */
-
-  uint32_t ClearInputPrescaler;  /*!< TIM Clear Input prescaler.
-                                      This parameter must be 0: When OCRef clear feature is used with ETR source,
-                                      ETR prescaler must be off */
-
-  uint32_t ClearInputFilter;     /*!< TIM Clear Input filter.
-                                      This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-} TIM_ClearInputConfigTypeDef;
-
-/**
-  * @brief  TIM Output Compare fast Config Structure definition
+/* Private macro -------------------------------------------------------------*/
+/** @defgroup TIMEx_Private_Macros TIM Extended Private Macros
+  * @{
   */
-typedef struct
-{
-  uint32_t FastMode;           /*!< TIM fast mode state.
-                                    This parameter can be a value of @ref TIM_Output_Fast_State */
-
-  uint32_t OC1Polarity;        /*!< TIM Output Compare 1 polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Polarity */
-
-  uint32_t OC1NPolarity;       /*!< TIM Output Compare 1 complementary polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Polarity */
-
-  uint32_t OC2Polarity;        /*!< TIM Output Compare 2 polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Polarity */
-
-  uint32_t OC2NPolarity;       /*!< TIM Output Compare 2 complementary polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Polarity */
-
-  uint32_t OC3Polarity;        /*!< TIM Output Compare 3 polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Polarity */
-
-  uint32_t OC3NPolarity;       /*!< TIM Output Compare 3 complementary polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Polarity */
-
-  uint32_t OC4Polarity;        /*!< TIM Output Compare 4 polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Polarity */
-} TIM_OCFastConfigTypeDef;
 
 /**
-  * @brief  TIM Output Compare config Structure definition
+  * @}
   */
-typedef struct
-{
-  uint32_t OCMode;             /*!< TIM Output Compare mode.
-                                    This parameter can be a value of @ref TIM_Output_Compare_and_PWM_modes */
+/* End of private macro ------------------------------------------------------*/
 
-  uint32_t Pulse;              /*!< TIM Pulse value.
-                                    This parameter can be a number between Min_Data = 0x0000 and Max_Data = 0xFFFF */
-
-  uint32_t OCPolarity;         /*!< TIM Output Compare polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Polarity */
-
-  uint32_t OCNPolarity;        /*!< TIM Output Compare complementary polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Polarity */
-
-  uint32_t OCFastMode;         /*!< TIM Output Compare fast mode.
-                                    This parameter can be a value of @ref TIM_Output_Fast_State */
-
-  uint32_t OCIdleState;        /*!< TIM Output Compare idle state.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Idle_State */
-
-  uint32_t OCNIdleState;       /*!< TIM Output Compare complementary idle state.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Idle_State */
-} TIM_OC_InitTypeDef;
-
-/**
-  * @brief  TIM One Pulse Mode configuration Structure definition
+/* Exported functions --------------------------------------------------------*/
+/** @addtogroup TIMEx_Exported_Functions TIM Extended Exported Functions
+  * @{
   */
-typedef struct
-{
-  uint32_t OCMode;             /*!< TIM Output Compare mode.
-                                    This parameter can be a value of @ref TIM_Output_Compare_and_PWM_modes */
 
-  uint32_t Pulse;              /*!< TIM Pulse value.
-                                    This parameter can be a number between Min_Data = 0x0000 and Max_Data = 0xFFFF */
-
-  uint32_t OCPolarity;         /*!< TIM Output Compare polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Polarity */
-
-  uint32_t OCNPolarity;        /*!< TIM Output Compare complementary polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Polarity */
-
-  uint32_t OCIdleState;        /*!< TIM Output Compare idle state.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Idle_State */
-
-  uint32_t OCNIdleState;       /*!< TIM Output Compare complementary idle state.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Idle_State */
-
-  uint32_t ICPolarity;         /*!< TIM Input Capture polarity.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Polarity */
-
-  uint32_t ICSelection;        /*!< TIM Input Capture selection.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Selection */
-
-  uint32_t ICFilter;           /*!< TIM Input Capture filter.
-                                    This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-} TIM_OnePulse_InitTypeDef;
-
-/**
-  * @brief  TIM Output Compare config Structure definition for TIM1 and TIM8
+/** @addtogroup TIMEx_Exported_Functions_Group1 Extended Timer Hall Sensor functions
+  *  @brief    Timer Hall Sensor functions
+  * @{
   */
-typedef struct
-{
-  uint32_t OCMode;             /*!< TIM Output Compare mode.
-                                    This parameter can be a value of @ref TIM_Output_Compare_and_PWM_modes */
+/*  Timer Hall Sensor functions  **********************************************/
+HAL_StatusTypeDef HAL_TIMEx_HallSensor_Init(TIM_HandleTypeDef *htim, const TIM_HallSensor_InitTypeDef *sConfig);
+HAL_StatusTypeDef HAL_TIMEx_HallSensor_DeInit(TIM_HandleTypeDef *htim);
 
-  uint32_t Pulse;              /*!< TIM Pulse value.
-                                    This parameter can be a number between Min_Data = 0x0000 and Max_Data = 0xFFFF */
+void HAL_TIMEx_HallSensor_MspInit(TIM_HandleTypeDef *htim);
+void HAL_TIMEx_HallSensor_MspDeInit(TIM_HandleTypeDef *htim);
 
-  uint32_t OCPolarity;         /*!< TIM Output Compare polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Polarity */
-
-  uint32_t OCNPolarity;        /*!< TIM Output Compare complementary polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Polarity */
-
-  uint32_t OCIdleState;        /*!< TIM Output Compare idle state.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Idle_State */
-
-  uint32_t OCNIdleState;       /*!< TIM Output Compare complementary idle state.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Idle_State */
-
-  uint32_t OCFastMode;         /*!< TIM Output Compare fast mode.
-                                    This parameter can be a value of @ref TIM_Output_Fast_State */
-} TIM_OC_InitTypeDef_Adv;
-
+/* Blocking mode: Polling */
+HAL_StatusTypeDef HAL_TIMEx_HallSensor_Start(TIM_HandleTypeDef *htim);
+HAL_StatusTypeDef HAL_TIMEx_HallSensor_Stop(TIM_HandleTypeDef *htim);
+/* Non-Blocking mode: Interrupt */
+HAL_StatusTypeDef HAL_TIMEx_HallSensor_Start_IT(TIM_HandleTypeDef *htim);
+HAL_StatusTypeDef HAL_TIMEx_HallSensor_Stop_IT(TIM_HandleTypeDef *htim);
+/* Non-Blocking mode: DMA */
+HAL_StatusTypeDef HAL_TIMEx_HallSensor_Start_DMA(TIM_HandleTypeDef *htim, uint32_t *pData, uint16_t Length);
+HAL_StatusTypeDef HAL_TIMEx_HallSensor_Stop_DMA(TIM_HandleTypeDef *htim);
 /**
-  * @brief  TIM PWM Configuration Structure definition
+  * @}
   */
-typedef struct
-{
-  uint32_t Pulse;              /*!< TIM Pulse value.
-                                    This parameter can be a number between Min_Data = 0x0000 and Max_Data = 0xFFFF */
 
-  uint32_t OCMode;             /*!< TIM Output Compare mode.
-                                    This parameter can be a value of @ref TIM_Output_Compare_and_PWM_modes */
-
-  uint32_t OCPolarity;         /*!< TIM Output Compare polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Polarity */
-
-  uint32_t OCNPolarity;        /*!< TIM Output Compare complementary polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Polarity */
-
-  uint32_t OCFastMode;         /*!< TIM Output Compare fast mode.
-                                    This parameter can be a value of @ref TIM_Output_Fast_State */
-
-  uint32_t OCIdleState;        /*!< TIM Output Compare idle state.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Idle_State */
-
-  uint32_t OCNIdleState;       /*!< TIM Output Compare complementary idle state.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Idle_State */
-} TIM_PWM_InitTypeDef;
-
-/**
-  * @brief  TIM Input Capture configuration Structure definition for TIM1 and TIM8
+/** @addtogroup TIMEx_Exported_Functions_Group2 Extended Timer Complementary Output Compare functions
+  *  @brief   Timer Complementary Output Compare functions
+  * @{
   */
-typedef struct
-{
-  uint32_t ICPolarity;         /*!< Specifies the active edge of the input signal.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Polarity */
+/*  Timer Complementary Output Compare functions  *****************************/
+/* Blocking mode: Polling */
+HAL_StatusTypeDef HAL_TIMEx_OCN_Start(TIM_HandleTypeDef *htim, uint32_t Channel);
+HAL_StatusTypeDef HAL_TIMEx_OCN_Stop(TIM_HandleTypeDef *htim, uint32_t Channel);
 
-  uint32_t ICSelection;        /*!< Specifies the input.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Selection */
+/* Non-Blocking mode: Interrupt */
+HAL_StatusTypeDef HAL_TIMEx_OCN_Start_IT(TIM_HandleTypeDef *htim, uint32_t Channel);
+HAL_StatusTypeDef HAL_TIMEx_OCN_Stop_IT(TIM_HandleTypeDef *htim, uint32_t Channel);
 
-  uint32_t ICPrescaler;        /*!< Specifies the Input Capture Prescaler.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Prescaler */
-
-  uint32_t ICFilter;           /*!< Specifies the input capture filter.
-                                    This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-} TIM_IC_InitTypeDef_Adv;
-
+/* Non-Blocking mode: DMA */
+HAL_StatusTypeDef HAL_TIMEx_OCN_Start_DMA(TIM_HandleTypeDef *htim, uint32_t Channel, const uint32_t *pData,
+                                          uint16_t Length);
+HAL_StatusTypeDef HAL_TIMEx_OCN_Stop_DMA(TIM_HandleTypeDef *htim, uint32_t Channel);
 /**
-  * @brief  TIM Encoder configuration Structure definition for TIM1 and TIM8
+  * @}
   */
-typedef struct
-{
-  uint32_t EncoderMode;        /*!< Specifies the encoder mode.
-                                    This parameter can be a value of @ref TIM_Encoder_Mode */
 
-  uint32_t IC1Polarity;        /*!< Specifies the active edge of the input signal.
-                                    This parameter can be a value of @ref TIM_Encoder_Input_Polarity */
-
-  uint32_t IC1Selection;       /*!< Specifies the input.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Selection */
-
-  uint32_t IC1Prescaler;       /*!< Specifies the Input Capture Prescaler.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Prescaler */
-
-  uint32_t IC1Filter;          /*!< Specifies the input capture filter.
-                                    This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-
-  uint32_t IC2Polarity;        /*!< Specifies the active edge of the input signal.
-                                    This parameter can be a value of @ref TIM_Encoder_Input_Polarity */
-
-  uint32_t IC2Selection;       /*!< Specifies the input.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Selection */
-
-  uint32_t IC2Prescaler;       /*!< Specifies the Input Capture Prescaler.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Prescaler */
-
-  uint32_t IC2Filter;          /*!< Specifies the input capture filter.
-                                    This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-} TIM_Encoder_InitTypeDef_Adv;
-
-/**
-  * @brief  TIM Hall sensor Configuration Structure definition for TIM1 and TIM8
+/** @addtogroup TIMEx_Exported_Functions_Group3 Extended Timer Complementary PWM functions
+  *  @brief    Timer Complementary PWM functions
+  * @{
   */
-typedef struct
-{
-  uint32_t IC1Polarity;         /*!< Specifies the active edge of the input signal.
-                                     This parameter can be a value of @ref TIM_Input_Capture_Polarity */
+/*  Timer Complementary PWM functions  ****************************************/
+/* Blocking mode: Polling */
+HAL_StatusTypeDef HAL_TIMEx_PWMN_Start(TIM_HandleTypeDef *htim, uint32_t Channel);
+HAL_StatusTypeDef HAL_TIMEx_PWMN_Stop(TIM_HandleTypeDef *htim, uint32_t Channel);
 
-  uint32_t IC1Prescaler;        /*!< Specifies the Input Capture Prescaler.
-                                     This parameter can be a value of @ref TIM_Input_Capture_Prescaler */
-
-  uint32_t IC1Filter;           /*!< Specifies the input capture filter.
-                                     This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-
-  uint32_t Commutation_Delay;   /*!< Specifies the pulse value to be loaded into the Capture Compare Register.
-                                     This parameter can be a number between Min_Data = 0x0000 and Max_Data = 0xFFFF */
-} TIM_HallSensor_InitTypeDef_Adv;
-
+/* Non-Blocking mode: Interrupt */
+HAL_StatusTypeDef HAL_TIMEx_PWMN_Start_IT(TIM_HandleTypeDef *htim, uint32_t Channel);
+HAL_StatusTypeDef HAL_TIMEx_PWMN_Stop_IT(TIM_HandleTypeDef *htim, uint32_t Channel);
+/* Non-Blocking mode: DMA */
+HAL_StatusTypeDef HAL_TIMEx_PWMN_Start_DMA(TIM_HandleTypeDef *htim, uint32_t Channel, const uint32_t *pData,
+                                           uint16_t Length);
+HAL_StatusTypeDef HAL_TIMEx_PWMN_Stop_DMA(TIM_HandleTypeDef *htim, uint32_t Channel);
 /**
-  * @brief  TIM Break input(s) and Dead time configuration Structure definition for TIM1 and TIM8
+  * @}
   */
-typedef struct
-{
-  uint32_t OffStateRunMode;     /*!< TIM off state in run mode.
-                                     This parameter can be a value of @ref TIM_OSSR_Off_State_Selection_for_Run_mode_state */
 
-  uint32_t OffStateIDLEMode;    /*!< TIM off state in IDLE mode.
-                                     This parameter can be a value of @ref TIM_OSSI_Off_State_Selection_for_Idle_mode_state */
-
-  uint32_t LockLevel;           /*!< TIM Lock level.
-                                     This parameter can be a value of @ref TIM_Lock_level */
-
-  uint32_t DeadTime;            /*!< TIM dead Time.
-                                     This parameter can be a number between Min_Data = 0x00 and Max_Data = 0xFF */
-
-  uint32_t BreakState;          /*!< TIM Break State.
-                                     This parameter can be a value of @ref TIM_Break_Input_enable_disable */
-
-  uint32_t BreakPolarity;       /*!< TIM Break input polarity.
-                                     This parameter can be a value of @ref TIM_Break_Polarity */
-
-  uint32_t BreakFilter;         /*!< Specifies the break input filter.
-                                     This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-
-  uint32_t AutomaticOutput;     /*!< TIM Automatic Output Enable state.
-                                     This parameter can be a value of @ref TIM_AOE_Bit_Set_Reset */
-} TIM_BreakDeadTimeConfigTypeDef_Adv;
-
-/**
-  * @brief  TIM Master configuration Structure definition for TIM1 and TIM8
+/** @addtogroup TIMEx_Exported_Functions_Group4 Extended Timer Complementary One Pulse functions
+  *  @brief    Timer Complementary One Pulse functions
+  * @{
   */
-typedef struct
-{
-  uint32_t  MasterOutputTrigger;   /*!< Trigger output (TRGO) selection.
-                                        This parameter can be a value of @ref TIM_Master_Mode_Selection */
+/*  Timer Complementary One Pulse functions  **********************************/
+/* Blocking mode: Polling */
+HAL_StatusTypeDef HAL_TIMEx_OnePulseN_Start(TIM_HandleTypeDef *htim, uint32_t OutputChannel);
+HAL_StatusTypeDef HAL_TIMEx_OnePulseN_Stop(TIM_HandleTypeDef *htim, uint32_t OutputChannel);
 
-  uint32_t  MasterSlaveMode;       /*!< Master/slave mode selection.
-                                        This parameter can be a value of @ref TIM_Master_Slave_Mode */
-} TIM_MasterConfigTypeDef_Adv;
-
+/* Non-Blocking mode: Interrupt */
+HAL_StatusTypeDef HAL_TIMEx_OnePulseN_Start_IT(TIM_HandleTypeDef *htim, uint32_t OutputChannel);
+HAL_StatusTypeDef HAL_TIMEx_OnePulseN_Stop_IT(TIM_HandleTypeDef *htim, uint32_t OutputChannel);
 /**
-  * @brief  TIM Slave configuration Structure definition for TIM1 and TIM8
+  * @}
   */
-typedef struct
-{
-  uint32_t  SlaveMode;         /*!< Slave mode selection.
-                                    This parameter can be a value of @ref TIM_Slave_Mode */
 
-  uint32_t  InputTrigger;      /*!< Input Trigger source.
-                                    This parameter can be a value of @ref TIM_Trigger_Selection */
-
-  uint32_t  TriggerPolarity;   /*!< Input Trigger polarity.
-                                    This parameter can be a value of @ref TIM_Trigger_Polarity */
-
-  uint32_t  TriggerPrescaler;  /*!< Input trigger prescaler.
-                                    This parameter can be a value of @ref TIM_Trigger_Prescaler */
-
-  uint32_t  TriggerFilter;     /*!< Input trigger filter.
-                                    This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-} TIM_SlaveConfigTypeDef_Adv;
-
-/**
-  * @brief  TIM Clock Configuration Handle Structure definition for TIM1 and TIM8
+/** @addtogroup TIMEx_Exported_Functions_Group5 Extended Peripheral Control functions
+  *  @brief    Peripheral Control functions
+  * @{
   */
-typedef struct
-{
-  uint32_t ClockSource;     /*!< TIM clock sources.
-                                 This parameter can be a value of @ref TIM_Clock_Source */
-
-  uint32_t ClockPolarity;   /*!< TIM clock polarity.
-                                 This parameter can be a value of @ref TIM_Clock_Polarity */
-
-  uint32_t ClockPrescaler;  /*!< TIM clock prescaler.
-                                 This parameter can be a value of @ref TIM_Clock_Prescaler */
-
-  uint32_t ClockFilter;     /*!< TIM clock filter.
-                                 This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-} TIM_ClockConfigTypeDef_Adv;
-
+/* Extended Control functions  ************************************************/
+HAL_StatusTypeDef HAL_TIMEx_ConfigCommutEvent(TIM_HandleTypeDef *htim, uint32_t  InputTrigger,
+                                              uint32_t  CommutationSource);
+HAL_StatusTypeDef HAL_TIMEx_ConfigCommutEvent_IT(TIM_HandleTypeDef *htim, uint32_t  InputTrigger,
+                                                 uint32_t  CommutationSource);
+HAL_StatusTypeDef HAL_TIMEx_ConfigCommutEvent_DMA(TIM_HandleTypeDef *htim, uint32_t  InputTrigger,
+                                                  uint32_t  CommutationSource);
+HAL_StatusTypeDef HAL_TIMEx_MasterConfigSynchronization(TIM_HandleTypeDef *htim,
+                                                        const TIM_MasterConfigTypeDef *sMasterConfig);
+HAL_StatusTypeDef HAL_TIMEx_ConfigBreakDeadTime(TIM_HandleTypeDef *htim,
+                                                const TIM_BreakDeadTimeConfigTypeDef *sBreakDeadTimeConfig);
+HAL_StatusTypeDef HAL_TIMEx_RemapConfig(TIM_HandleTypeDef *htim, uint32_t Remap);
 /**
-  * @brief  TIM Clear Input configuration Handle Structure definition for TIM1 and TIM8
+  * @}
   */
-typedef struct
-{
-  uint32_t ClearInputState;      /*!< TIM clear Input state.
-                                      This parameter can be ENABLE or DISABLE */
 
-  uint32_t ClearInputSource;     /*!< TIM clear Input sources.
-                                      This parameter can be a value of @ref TIM_ClearInput_Source */
-
-  uint32_t ClearInputPolarity;   /*!< TIM Clear Input polarity.
-                                      This parameter can be a value of @ref TIM_ClearInput_Polarity */
-
-  uint32_t ClearInputPrescaler;  /*!< TIM Clear Input prescaler.
-                                      This parameter must be 0: When OCRef clear feature is used with ETR source,
-                                      ETR prescaler must be off */
-
-  uint32_t ClearInputFilter;     /*!< TIM Clear Input filter.
-                                      This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-} TIM_ClearInputConfigTypeDef_Adv;
-
-/**
-  * @brief  TIM Output Compare fast Config Structure definition for TIM1 and TIM8
+/** @addtogroup TIMEx_Exported_Functions_Group6 Extended Callbacks functions
+  * @brief    Extended Callbacks functions
+  * @{
   */
-typedef struct
-{
-  uint32_t FastMode;           /*!< TIM fast mode state.
-                                    This parameter can be a value of @ref TIM_Output_Fast_State */
-
-  uint32_t OC1Polarity;        /*!< TIM Output Compare 1 polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Polarity */
-
-  uint32_t OC1NPolarity;       /*!< TIM Output Compare 1 complementary polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Polarity */
-
-  uint32_t OC2Polarity;        /*!< TIM Output Compare 2 polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Polarity */
-
-  uint32_t OC2NPolarity;       /*!< TIM Output Compare 2 complementary polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Polarity */
-
-  uint32_t OC3Polarity;        /*!< TIM Output Compare 3 polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Polarity */
-
-  uint32_t OC3NPolarity;       /*!< TIM Output Compare 3 complementary polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Polarity */
-
-  uint32_t OC4Polarity;        /*!< TIM Output Compare 4 polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Polarity */
-} TIM_OCFastConfigTypeDef_Adv;
-
+/* Extended Callback **********************************************************/
+void HAL_TIMEx_CommutCallback(TIM_HandleTypeDef *htim);
+void HAL_TIMEx_CommutHalfCpltCallback(TIM_HandleTypeDef *htim);
+void HAL_TIMEx_BreakCallback(TIM_HandleTypeDef *htim);
 /**
-  * @brief  TIM One Pulse Mode configuration Structure definition for TIM1 and TIM8
+  * @}
   */
-typedef struct
-{
-  uint32_t OCMode;             /*!< TIM Output Compare mode.
-                                    This parameter can be a value of @ref TIM_Output_Compare_and_PWM_modes */
 
-  uint32_t Pulse;              /*!< TIM Pulse value.
-                                    This parameter can be a number between Min_Data = 0x0000 and Max_Data = 0xFFFF */
-
-  uint32_t OCPolarity;         /*!< TIM Output Compare polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Polarity */
-
-  uint32_t OCNPolarity;        /*!< TIM Output Compare complementary polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Polarity */
-
-  uint32_t OCIdleState;        /*!< TIM Output Compare idle state.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Idle_State */
-
-  uint32_t OCNIdleState;       /*!< TIM Output Compare complementary idle state.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Idle_State */
-
-  uint32_t ICPolarity;         /*!< TIM Input Capture polarity.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Polarity */
-
-  uint32_t ICSelection;        /*!< TIM Input Capture selection.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Selection */
-
-  uint32_t ICFilter;           /*!< TIM Input Capture filter.
-                                    This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-} TIM_OnePulse_InitTypeDef_Adv;
-
-/**
-  * @brief  TIM PWM Configuration Structure definition for TIM1 and TIM8
+/** @addtogroup TIMEx_Exported_Functions_Group7 Extended Peripheral State functions
+  * @brief    Extended Peripheral State functions
+  * @{
   */
-typedef struct
-{
-  uint32_t Pulse;              /*!< TIM Pulse value.
-                                    This parameter can be a number between Min_Data = 0x0000 and Max_Data = 0xFFFF */
-
-  uint32_t OCMode;             /*!< TIM Output Compare mode.
-                                    This parameter can be a value of @ref TIM_Output_Compare_and_PWM_modes */
-
-  uint32_t OCPolarity;         /*!< TIM Output Compare polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Polarity */
-
-  uint32_t OCNPolarity;        /*!< TIM Output Compare complementary polarity.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Polarity */
-
-  uint32_t OCFastMode;         /*!< TIM Output Compare fast mode.
-                                    This parameter can be a value of @ref TIM_Output_Fast_State */
-
-  uint32_t OCIdleState;        /*!< TIM Output Compare idle state.
-                                    This parameter can be a value of @ref TIM_Output_Compare_Idle_State */
-
-  uint32_t OCNIdleState;       /*!< TIM Output Compare complementary idle state.
-                                    This parameter can be a value of @ref TIM_Output_Compare_N_Idle_State */
-} TIM_PWM_InitTypeDef_Adv;
-
+/* Extended Peripheral State functions  ***************************************/
+HAL_TIM_StateTypeDef HAL_TIMEx_HallSensor_GetState(const TIM_HandleTypeDef *htim);
+HAL_TIM_ChannelStateTypeDef HAL_TIMEx_GetChannelNState(const TIM_HandleTypeDef *htim,  uint32_t ChannelN);
 /**
-  * @brief  TIM Input Capture configuration Structure definition for TIM1 and TIM8
+  * @}
   */
-typedef struct
-{
-  uint32_t ICPolarity;         /*!< Specifies the active edge of the input signal.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Polarity */
-
-  uint32_t ICSelection;        /*!< Specifies the input.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Selection */
-
-  uint32_t ICPrescaler;        /*!< Specifies the Input Capture Prescaler.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Prescaler */
-
-  uint32_t ICFilter;           /*!< Specifies the input capture filter.
-                                    This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-} TIM_IC_InitTypeDef_Adv2;
 
 /**
-  * @brief  TIM Encoder configuration Structure definition for TIM1 and TIM8
+  * @}
   */
-typedef struct
-{
-  uint32_t EncoderMode;        /*!< Specifies the encoder mode.
-                                    This parameter can be a value of @ref TIM_Encoder_Mode */
+/* End of exported functions -------------------------------------------------*/
 
-  uint32_t IC1Polarity;        /*!< Specifies the active edge of the input signal.
-                                    This parameter can be a value of @ref TIM_Encoder_Input_Polarity */
-
-  uint32_t IC1Selection;       /*!< Specifies the input.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Selection */
-
-  uint32_t IC1Prescaler;       /*!< Specifies the Input Capture Prescaler.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Prescaler */
-
-  uint32_t IC1Filter;          /*!< Specifies the input capture filter.
-                                    This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-
-  uint32_t IC2Polarity;        /*!< Specifies the active edge of the input signal.
-                                    This parameter can be a value of @ref TIM_Encoder_Input_Polarity */
-
-  uint32_t IC2Selection;       /*!< Specifies the input.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Selection */
-
-  uint32_t IC2Prescaler;       /*!< Specifies the Input Capture Prescaler.
-                                    This parameter can be a value of @ref TIM_Input_Capture_Prescaler */
-
-  uint32_t IC2Filter;          /*!< Specifies the input capture filter.
-                                    This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-} TIM_Encoder_InitTypeDef_Adv2;
-
-/**
-  * @brief  TIM Hall sensor Configuration Structure definition for TIM1 and TIM8
+/* Private functions----------------------------------------------------------*/
+/** @addtogroup TIMEx_Private_Functions TIM Extended Private Functions
+  * @{
   */
-typedef struct
-{
-  uint32_t IC1Polarity;         /*!< Specifies the active edge of the input signal.
-                                     This parameter can be a value of @ref TIM_Input_Capture_Polarity */
-
-  uint32_t IC1Prescaler;        /*!< Specifies the Input Capture Prescaler.
-                                     This parameter can be a value of @ref TIM_Input_Capture_Prescaler */
-
-  uint32_t IC1Filter;           /*!< Specifies the input capture filter.
-                                     This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-
-  uint32_t Commutation_Delay;   /*!< Specifies the pulse value to be loaded into the Capture Compare Register.
-                                     This parameter can be a number between Min_Data = 0x0000 and Max_Data = 0xFFFF */
-} TIM_HallSensor_InitTypeDef_Adv2;
-
+void TIMEx_DMACommutationCplt(DMA_HandleTypeDef *hdma);
+void TIMEx_DMACommutationHalfCplt(DMA_HandleTypeDef *hdma);
 /**
-  * @brief  TIM Break input(s) and Dead time configuration Structure definition for TIM1 and TIM8
+  * @}
   */
-typedef struct
-{
-  uint32_t OffStateRunMode;     /*!< TIM off state in run mode.
-                                     This parameter can be a value of @ref TIM_OSSR_Off_State_Selection_for_Run_mode_state */
-
-  uint32_t OffStateIDLEMode;    /*!< TIM off state in IDLE mode.
-                                     This parameter can be a value of @ref TIM_OSSI_Off_State_Selection_for_Idle_mode_state */
-
-  uint32_t LockLevel;           /*!< TIM Lock level.
-                                     This parameter can be a value of @ref TIM_Lock_level */
-
-  uint32_t DeadTime;            /*!< TIM dead Time.
-                                     This parameter can be a number between Min_Data = 0x00 and Max_Data = 0xFF */
-
-  uint32_t BreakState;          /*!< TIM Break State.
-                                     This parameter can be a value of @ref TIM_Break_Input_enable_disable */
-
-  uint32_t BreakPolarity;       /*!< TIM Break input polarity.
-                                     This parameter can be a value of @ref TIM_Break_Polarity */
-
-  uint32_t BreakFilter;         /*!< Specifies the break input filter.
-                                     This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
-
-  uint32_t AutomaticOutput;     /*!< TIM Automatic Output Enable state.
-                                     This parameter can be a value of @ref TIM_AOE_Bit_Set_Reset */
-} TIM_BreakDeadTimeConfigTypeDef_Adv2;
+/* End of private functions --------------------------------------------------*/
 
 /**
-  * @brief  TIM Master configuration Structure definition for TIM1 and TIM8
+  * @}
   */
-typedef struct
-{
-  uint32_t  MasterOutputTrigger;   /*!< Trigger output (TRGO) selection.
-                                        This parameter can be a value of @ref TIM_Master_Mode_Selection */
-
-  uint32_t  MasterSlaveMode;       /*!< Master/slave mode selection.
-                                        This parameter can be a value of @ref TIM_Master_Slave_Mode */
-} TIM_MasterConfigTypeDef_Adv2;
 
 /**
-  * @
+  * @}
+  */
+
+#ifdef __cplusplus
+}
+#endif
+
+
+#endif /* STM32F1xx_HAL_TIM_EX_H */

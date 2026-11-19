@@ -1,0 +1,25 @@
+; *************************************************************
+; *** Scatter File - {{PROJECT_NAME}}
+; *** 目标: STM32F103C8T6 (64KB Flash @ 0x08000000, 20KB SRAM @ 0x20000000)
+; *************************************************************
+;
+; 作用：告诉 armlink 把中断向量表放在 Flash 最开头（RESET 段 +First），
+;      否则启动代码里的 BL __scatterload 会被排到 0x08000000，
+;      向量表后移，芯片上电后取到的是 BL 指令而不是初始 SP，
+;      表现为不启动 / HardFault。
+;
+; 换芯片时改这两处：
+;   LR_IROM1 / ER_IROM1 的起始地址与大小（Flash）
+;   RW_IRAM1 的起始地址与大小（SRAM）
+
+LR_IROM1 0x08000000 0x00010000  {
+  ER_IROM1 0x08000000 0x00010000  {
+   *.o (RESET, +First)
+   *(InRoot$$Sections)
+   .ANY (+RO)
+   .ANY (+XO)
+  }
+  RW_IRAM1 0x20000000 0x00005000  {
+   .ANY (+RW +ZI)
+  }
+}
