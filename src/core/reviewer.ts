@@ -1,10 +1,12 @@
 import type { LlmClient } from './llm.js';
 import type { GeneratedFileResult, ProjectPlan, ReviewIssue, ReviewResult } from './types.js';
 
-/** 审查时单个文件的最大长度（超出截断） */
+/** 审查时单个文件的兜底上限（仅在无法估算预算时生效） */
 const MAX_FILE_DUMP = 20 * 1024;
-/** 送审代码总量上限 */
+/** 送审代码总量兜底上限 */
 const MAX_TOTAL_DUMP = 90 * 1024;
+/** 送审代码占上下文的比例，其余留给审查指令与模型写回完整文件 */
+const REVIEW_BUDGET_RATIO = 0.4;
 
 const REVIEW_SYSTEM_PROMPT = `你是一名资深嵌入式软件工程师，正在对刚生成的嵌入式工程代码做严格的技术审查。
 
@@ -33,17 +35,22 @@ export async function reviewGeneratedProject(
   const aiFiles = files.filter((f) => f.status === 'ok' && f.content);
   if (!aiFiles.length) return null;
 
+  // 按上下文预算决定送审容量：长上下文模型能吃下整个工程，不必固定 90KB 截断
+  const ctx = client.contextTokens;
+  const totalLimit = ctx ? Math.floor(ctx * REVIEW_BUDGET_RATIO) * 3 : MAX_TOTAL_DUMP;
+  const perFileLimit = ctx ? Math.max(MAX_FILE_DUMP, Math.floor(totalLimit / 2)) : MAX_FILE_DUMP;
+
   let total = 0;
   const dump = aiFiles
     .map((f) => {
-      const content = f.content!.length > MAX_FILE_DUMP
-        ? f.content!.slice(0, MAX_FILE_DUMP) + '\n…（截断）'
+      const content = f.content!.length > perFileLimit
+        ? f.content!.slice(0, perFileLimit) + '\n…（截断）'
         : f.content!;
       total += content.length;
       return `===== ${f.path} =====\n${content}`;
     })
     .join('\n\n')
-    .slice(0, MAX_TOTAL_DUMP);
+    .slice(0, totalLimit);
   if (!total) return null;
 
   const planBrief = [

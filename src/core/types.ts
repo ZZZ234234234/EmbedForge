@@ -28,6 +28,8 @@ export interface LlmConfig {
   model: string;
   /** 单文件生成超时（毫秒） */
   timeoutMs?: number;
+  /** 模型上下文窗口（token），决定会话记忆能带多少历史；默认 128000 */
+  contextTokens?: number;
 }
 
 /** 需求解析结果（LLM 输出的结构化工程规划） */
@@ -89,6 +91,8 @@ export interface GenerateResult {
   elapsedMs: number;
   /** 资深工程师代码审查结果（未启用/失败时为 null） */
   review?: ReviewResult | null;
+  /** 本地编译验证结果（未启用时为 null） */
+  verify?: VerifyResult | null;
 }
 
 /** Web 服务配置 */
@@ -124,7 +128,17 @@ export interface MemoryTurn {
   at: string;
 }
 
-/** 会话记忆：跨多轮保留需求、规划与附件信息 */
+/** 源码快照：只保留最近一次，避免每轮重复存全量代码 */
+export interface CodeSnapshot {
+  /** 快照产生的时间（对应哪一轮） */
+  at: string;
+  /** 该轮写入工程的源码（仅应用层，不含厂商库） */
+  files: { path: string; content: string }[];
+  /** 因超出预算而被省略的文件数 */
+  omitted: number;
+}
+
+/** 会话记忆：跨多轮保留需求、规划、附件信息与最近一次源码快照 */
 export interface SessionMemory {
   id: string;
   createdAt: string;
@@ -132,6 +146,12 @@ export interface SessionMemory {
   turns: MemoryTurn[];
   /** 最近一次附件文件名（内容不持久化图片 base64，仅记录元信息） */
   attachmentNames: string[];
+  /** 最近一次生成的源码快照（供后续轮次引用，不随轮次累积） */
+  codeSnapshot?: CodeSnapshot;
+  /** 最近一次编译验证结论（供续接会话后在界面上回显） */
+  lastVerify?: VerifyResult;
+  /** 该会话使用的上下文预算（token），null 表示用默认值 */
+  contextTokens?: number;
 }
 
 /* ================= Agent（工具调用循环） ================= */
@@ -170,4 +190,28 @@ export interface ReviewIssue {
 export interface ReviewResult {
   issues: ReviewIssue[];
   fixedFiles: GeneratedFileResult[];
+}
+
+/* ================= 编译验证 ================= */
+
+/** 一次本地编译验证的结果 */
+export interface VerifyResult {
+  /** 是否真的执行了编译（环境缺工具链时为 false） */
+  attempted: boolean;
+  /** 编译是否成功 */
+  ok: boolean;
+  /** 实际执行的命令 */
+  command: string;
+  /** 退出码；未执行时为 null */
+  exitCode: number | null;
+  /** 编译产物路径（成功时） */
+  artifact?: string;
+  /** 编译产物大小（字节） */
+  artifactSize?: number;
+  /** 输出摘要 */
+  output: string;
+  /** 未执行或失败的原因 */
+  reason?: string;
+  /** 耗时（毫秒） */
+  elapsedMs: number;
 }

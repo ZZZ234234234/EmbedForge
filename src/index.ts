@@ -4,6 +4,7 @@ import {
   SessionStore,
   buildMemoryBrief,
   buildTextContext,
+  recordCodeSnapshot,
   recordTurn,
 } from './core/context.js';
 import { generateProject } from './core/generator.js';
@@ -31,6 +32,7 @@ import type {
 } from './core/types.js';
 import type { Skill } from './core/skills.js';
 import { writeProject } from './core/writer.js';
+import { verifyProject, type VerifyResult } from './core/verify.js';
 import { runAgentTask } from './core/agent.js';
 
 export * from './core/types.js';
@@ -85,6 +87,12 @@ export interface GenerateOptions {
   noSkills?: boolean;
   /** 关闭资深工程师代码审查（默认开启） */
   noReview?: boolean;
+  /** 模型上下文窗口（token）；决定会话记忆能带多少轮历史，默认取模型配置值 */
+  contextTokens?: number;
+  /** 写出工程后尝试本地编译验证（默认关闭；工具链缺失时自动跳过） */
+  verify?: boolean;
+  /** 编译验证超时（毫秒，默认 300000） */
+  verifyTimeoutMs?: number;
 }
 
 export interface RunResult {
@@ -98,6 +106,8 @@ export interface RunResult {
   review: ReviewResult | null;
   /** 工程输出目录绝对路径 */
   outDir: string;
+  /** 编译验证结果（未启用时为 null） */
+  verify: VerifyResult | null;
 }
 
 const DEFAULT_OUT_DIR = './generated';
@@ -117,7 +127,10 @@ export async function runEmbedForge(
   // 会话记忆：续接已有会话或新建
   const store = new SessionStore(opts.sessionStoreDir);
   let session = (opts.sessionId && store.load(opts.sessionId)) || store.create();
-  const memoryBrief = buildMemoryBrief(session);
+  // 上下文窗口：CLI 显式指定 > 会话记录 > 模型配置默认值
+  if (opts.contextTokens) session.contextTokens = opts.contextTokens;
+  const contextTokens = session.contextTokens ?? client.contextTokens;
+  const memoryBrief = buildMemoryBrief(session, { contextTokens });
   // 代码生成阶段的额外上下文（文本附件 + 历史；图片只在规划阶段发送）
   const extraContext = buildTextContext(attachments) + memoryBrief;
 
@@ -181,10 +194,27 @@ export async function runEmbedForge(
   }
 
   const outDir = resolve(opts.outDir ?? DEFAULT_OUT_DIR);
-  const written = writeProject(outDir, plan, generated.files, review);
 
-  // 记录本轮到记忆并持久化
+  // 先写盘（编译验证需要真实文件），验证结果之后回填进 README
+  let written = writeProject(outDir, plan, generated.files, review);
+
+  // 编译验证：确认写出的源码能在本地工具链下真正编过（工具链缺失则跳过，不算失败）
+  let verify: VerifyResult | null = null;
+  if (opts.verify) {
+    verify = verifyProject(outDir, plan.buildSystem, {
+      timeoutMs: opts.verifyTimeoutMs,
+    });
+    if (verify.attempted) {
+      // 重写 README，把编译结论写进工程（再次写盘不改动源码，只更新 README）
+      written = writeProject(outDir, plan, generated.files, review, verify);
+    }
+  }
+
+  // 记录本轮到记忆并持久化（含最近一次源码快照，供下一轮迭代时参照真实实现）
   recordTurn(session, requirement, plan, attachments.map((a) => a.name));
+  // 快照预算：占上下文的一小部分，避免把整个工程塞进每轮请求
+  recordCodeSnapshot(session, generated.files, Math.floor(contextTokens * 0.12) * 3);
+  if (verify) session.lastVerify = verify;
   session = store.save(session);
 
   const failedFiles = generated.files.filter((f) => f.status === 'error');
@@ -199,8 +229,9 @@ export async function runEmbedForge(
     failedFiles,
     elapsedMs: Date.now() - started,
     review,
+    verify,
   };
-  return { plan, result, skeletonOnly, session, skillsUsed: matchedSkills, review, outDir };
+  return { plan, result, skeletonOnly, session, skillsUsed: matchedSkills, review, outDir, verify };
 }
 
 function sanitizeDirName(name: string): string {

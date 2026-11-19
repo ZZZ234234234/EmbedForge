@@ -28,6 +28,8 @@ export interface ChatOptions {
   maxTokens?: number;
   /** 期望输出 JSON 对象（自动附加 JSON 约束提示并尝试解析） */
   jsonMode?: boolean;
+  /** 上下文窗口（token），用于估算请求占用；不传则用模型配置值 */
+  contextTokens?: number;
 }
 
 /** OpenAI function calling 的工具定义 */
@@ -56,6 +58,13 @@ export class LlmError extends Error {
 /** OpenAI 兼容 Chat Completions 客户端 */
 export class LlmClient {
   constructor(private readonly cfg: LlmConfig) {}
+
+  /** 模型上下文窗口（token）；未配置时为默认值，供记忆与审查按预算裁剪 */
+  get contextTokens(): number {
+    return this.cfg.contextTokens && this.cfg.contextTokens > 0
+      ? this.cfg.contextTokens
+      : 128_000;
+  }
 
   private async post(body: Record<string, unknown>): Promise<Record<string, unknown>> {
     const { baseURL, apiKey, timeoutMs = 120_000 } = this.cfg;

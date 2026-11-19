@@ -32,7 +32,7 @@ const program = new Command();
 program
   .name('embedforge')
   .description('嵌入式 AI 开发 Agent：描述需求，生成完整工程文件；支持技能知识库与 Agent 文件工具')
-  .version('0.8.0');
+  .version('0.9.0');
 
 program
   .command('generate')
@@ -40,16 +40,16 @@ program
   .argument('<requirement>', '开发需求描述，例如 "STM32F103 读取 DHT11 温湿度，OLED 显示"')
   .option('-o, --out <dir>', '输出目录（默认 ./generated）')
   .option('-p, --platform <id>', '强制指定平台：stm32 | esp32 | arduino | pico | avr | micropython | zephyr | generic-c')
-  .option(
-    '--build-system <name>',
-    '构建系统：make | cmake | keil | platformio（仅 STM32 支持切换，其余平台骨架已自带构建文件）',
-  )
+  .option('--build-system <name>', '构建系统：make | cmake | keil | platformio（仅 STM32 支持切换，其余平台骨架已自带构建文件）')
+  .option('--context-tokens <n>', '模型上下文窗口（token），决定会话记忆能带多少轮历史（默认 128000）')
+  .option('--verify', '写出工程后尝试本地编译验证（需已安装对应工具链，失败不影响生成）')
+  .option('--verify-timeout <ms>', '编译验证超时毫秒数（默认 300000）')
 .option('--provider <name>', `API 服务商预设：${Object.keys(PROVIDER_PRESETS).join(' | ')}（默认 deepseek）`)
   .option('--base-url <url>', 'OpenAI 兼容 API 端点（覆盖预设）')
   .option('--model <model>', '模型名（覆盖预设；图片识别需用多模态模型如 gpt-4o/qwen-vl）')
   .option('--api-key <key>', 'API Key（也可用环境变量 EMBEDFORGE_API_KEY）')
   .option('--attach <path>', '附件（数据手册/代码/原理图图片），可重复指定多次', collect, [])
-  .option('--session <id>', '续接已有会话 id（保留上下文记忆）')
+  .option('--session <id>', '续接已有会话 id（保留上下文记忆）；新开会话请省略此参数，不要传空串')
   .option('--skill <name>', '技能白名单（仅使用这些技能），可重复指定；不传则自动匹配全部', collect, [])
   .option('--no-skills', '禁用所有专家技能（小项目省 token）')
   .option('--no-review', '跳过生成后的 AI 代码审查（默认开启审查并自动修复问题）')
@@ -59,22 +59,32 @@ program
       const llm = resolveLlm(opts as Record<string, string>);
       const attachPaths = (opts.attach as string[]) ?? [];
       const attachments = attachPaths.map((p) => loadAttachmentFromPath(p));
-      const { plan, result, skeletonOnly, session, skillsUsed, review, outDir } = await runEmbedForge(
+      // 防护：`--session ""` 会让 commander 把紧随其后的选项（如 --out）当成它的值吞掉。
+      // 空的 session 值视同未指定，并提示用户改用省略参数的方式新开会话。
+      const rawSession = opts.session as string | undefined;
+      if (rawSession !== undefined && !rawSession.trim()) {
+        console.warn('提示：--session 传空串会吞掉紧随其后的选项；新开会话请直接省略 --session。');
+      }
+      const sessionId = rawSession && rawSession.trim() ? rawSession : undefined;
+      const { plan, result, skeletonOnly, session, skillsUsed, review, outDir, verify } = await runEmbedForge(
         requirement,
         llm,
         {
-          outDir: (opts.out as string) ?? './generated',
+          outDir: (opts.out as string) || './generated',
           platform: (opts.platform as string) || undefined,
           buildSystem: (opts.buildSystem as string) || undefined,
+          contextTokens: opts.contextTokens ? Number(opts.contextTokens) : undefined,
+          verify: Boolean(opts.verify),
+          verifyTimeoutMs: opts.verifyTimeout ? Number(opts.verifyTimeout) : undefined,
           skeletonOnly: Boolean(opts.skeletonOnly),
           attachments,
-          sessionId: opts.session as string | undefined,
+          sessionId,
           skills: (opts.skill as string[]) ?? [],
           noSkills: Boolean(opts.noSkills),
           noReview: Boolean(opts.noReview),
         },
       );
-      printResult(plan, result, skeletonOnly, session.id, attachments.length, skillsUsed, review);
+      printResult(plan, result, skeletonOnly, session.id, attachments.length, skillsUsed, review, verify);
       openFolder(outDir);
     } catch (err) {
       console.error(`\n✖ ${(err as Error).message}`);
@@ -243,6 +253,7 @@ function printResult(
   attachmentCount: number,
   skillsUsed: { name: string }[],
   review: { issues: { file: string; severity: string; description: string }[]; fixedFiles: unknown[] } | null,
+  verify?: import('../core/types.js').VerifyResult | null,
 ): void {
   const mode = skeletonOnly ? '骨架模式（未调用 LLM）' : 'AI 完整生成';
   console.log(`\n✔ 工程已生成：${plan.projectName}（${mode}）`);
@@ -265,6 +276,19 @@ function printResult(
       console.log(`    [${i.severity}] ${i.file}: ${i.description.slice(0, 80)}`);
     }
     if (review.issues.length > 5) console.log('    …');
+  }
+  if (verify) {
+    if (!verify.attempted) {
+      console.log(`  编译验证：未执行（${verify.reason ?? '本地工具链不可用'}）`);
+    } else if (verify.ok) {
+      const size = verify.artifactSize != null ? `，产物 ${verify.artifactSize} 字节` : '';
+      console.log(`  编译验证：✅ 通过（${verify.command}，${(verify.elapsedMs / 1000).toFixed(1)}s${size}）`);
+    } else {
+      console.log(`  编译验证：❌ 失败（${verify.command}，退出码 ${verify.exitCode}）`);
+      for (const e of verify.output.split(/\r?\n/).filter((l) => /error|错误|undefined reference|No such file/i.test(l)).slice(0, 6)) {
+        console.log(`    ${e.trim()}`);
+      }
+    }
   }
   console.log(`  会话 id：${sessionId}（用 --session ${sessionId} 可在此工程上继续迭代）`);
   if (result.failedFiles.length) {

@@ -33,6 +33,8 @@ EmbedForge 是一个**嵌入式 AI 开发 Agent**：接入任意 OpenAI 兼容�
 - **离线骨架模式**：`--skeleton-only` 无需 API Key，直接生成可扩展的工程骨架
 - **双入口**：命令行 CLI + 本地 Web 界面（`embedforge web`）
 - **OpenAI 兼容**：任意 `baseURL` + `model` + `apiKey` 即可接入
+- **编译验证**：`--verify` 在写出工程后自动调用本地工具链真实编译一次，把结论与错误行写进工程 README；工具链缺失时明确跳过，不误判为代码问题
+- **长上下文会话**：会话记忆按模型上下文窗口（默认 128k，可 `--context-tokens` 调到 1M）动态装载，不再固定 10 轮；同时保留最近一次源码快照供迭代参照
 
 ## 🚀 快速开始
 
@@ -219,7 +221,8 @@ my-project/
 - [x] 资深工程师代码审查（生成后自动审查并修复，记录写入工程 README）
 - [ ] 支持 Keil MDK / IAR / STM32CubeIDE 工程模板
 - [ ] FreeRTOS / RT-Thread 等 RTOS 选项（框架已由 freertos-rtos 技能覆盖）
-- [ ] AI 生成代码的编译冒烟测试（GitHub Actions 内置工具链）
+- [x] 编译验证：`--verify` 本地真实编译（make / cmake / platformio），结论写入工程 README
+- [ ] 编译验证接入 GitHub Actions（需在 CI 里预装交叉工具链）
 - [ ] 工程模板插件机制（用户自定义平台）
 
 ## 🛡️ 官方身份、防伪与维权

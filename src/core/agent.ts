@@ -22,8 +22,11 @@ const SKIP_DIRS = new Set(['.git', 'node_modules', 'build', 'dist', 'Debug', '.p
 
 const MAX_FILE_BYTES = 256 * 1024;
 const MAX_LIST_ENTRIES = 400;
+/** 工具输出的兜底上限（无法估算上下文预算时使用） */
 const MAX_TOOL_OUTPUT = 16 * 1024;
 const DEFAULT_MAX_STEPS = 24;
+/** 单个工具输出可占上下文的比例 */
+const TOOL_OUTPUT_BUDGET_RATIO = 0.06;
 
 export class AgentError extends Error {}
 
@@ -64,6 +67,8 @@ export class ProjectTools {
     /** 工程根目录（所有文件操作限制在此目录内） */
     readonly projectDir: string,
     private readonly allowShell: boolean = false,
+    /** 工具输出上限（字符）；由调用方按模型上下文预算换算，未传则用兜底值 */
+    private readonly toolOutputLimit: number = MAX_TOOL_OUTPUT,
   ) {
     if (!existsSync(projectDir) || !statSync(projectDir).isDirectory()) {
       throw new AgentError(`工程目录不存在: ${projectDir}`);
@@ -112,7 +117,7 @@ export class ProjectTools {
     } catch (err) {
       out = `ERROR: ${(err as Error).message}`;
     }
-    return out.slice(0, MAX_TOOL_OUTPUT);
+    return out.slice(0, this.toolOutputLimit);
   }
 
   /** shell 命令执行（仅 --allow-shell 时由循环调用） */
@@ -125,12 +130,12 @@ export class ProjectTools {
       });
       const out = `exit=0\n${stdout}\n${stderr}`.trim();
       this.record('run_command', command, true, out.slice(0, 400));
-      return out.slice(0, MAX_TOOL_OUTPUT) || '(无输出)';
+      return out.slice(0, this.toolOutputLimit) || '(无输出)';
     } catch (err) {
       const e = err as { stdout?: string; stderr?: string; message: string };
       const out = `ERROR: ${e.message}\n${e.stdout ?? ''}\n${e.stderr ?? ''}`.trim();
       this.record('run_command', command, false, out.slice(0, 400));
-      return out.slice(0, MAX_TOOL_OUTPUT);
+      return out.slice(0, this.toolOutputLimit);
     }
   }
 
@@ -172,8 +177,8 @@ export class ProjectTools {
       throw new AgentError(`不支持读取的文件类型: ${ext}（仅文本/代码文件）`);
     }
     const buf = readFileSync(abs);
-    let text = buf.subarray(0, MAX_FILE_BYTES).toString('utf8');
-    if (buf.length > MAX_FILE_BYTES) text += '\n…（文件过长，已截断）';
+    let text = buf.subarray(0, Math.max(MAX_FILE_BYTES, this.toolOutputLimit)).toString('utf8');
+    if (buf.length > Math.max(MAX_FILE_BYTES, this.toolOutputLimit)) text += '\n…（文件过长，已截断）';
     this.record('read_file', relPath, true, `${buf.length}B`);
     return text || '(空文件)';
   }
@@ -286,7 +291,12 @@ export async function runAgentTask(
   opts: AgentOptions = {},
 ): Promise<AgentRunResult> {
   const started = Date.now();
-  const tools = new ProjectTools(projectDir, opts.allowShell ?? false);
+  // 工具输出按模型上下文预算放大：长上下文模型可以一次读入整个大文件
+  const toolLimit = Math.max(
+    MAX_TOOL_OUTPUT,
+    Math.floor(client.contextTokens * TOOL_OUTPUT_BUDGET_RATIO * 3),
+  );
+  const tools = new ProjectTools(projectDir, opts.allowShell ?? false, toolLimit);
 
   const matched: Skill[] = matchSkills(task, opts.skills ?? [], { forceSkills: opts.forceSkills });
   const skillsContext = buildSkillsContext(matched);
@@ -303,7 +313,12 @@ export async function runAgentTask(
   let report = '';
 
   for (let step = 0; step < maxSteps; step++) {
-    const res = await client.chatWithTools(messages, TOOL_DEFS, { maxTokens: 8000 });
+    // 多步工具调用会让消息数组持续膨胀（每步都追加 assistant + tool 消息），
+    // 长上下文模型也不例外：这里按预算裁剪历史，保留 system 与最近若干条，
+    // 避免后期请求超出窗口被服务端拒绝。
+    const trimmed = trimAgentHistory(messages, client.contextTokens);
+
+    const res = await client.chatWithTools(trimmed, TOOL_DEFS, { maxTokens: 8000 });
 
     if (!res.toolCalls.length) {
       report = res.content ?? '(模型未给出总结)';
@@ -355,4 +370,58 @@ export async function runAgentTask(
     elapsedMs: Date.now() - started,
     truncated,
   };
+}
+
+/**
+ * 裁剪 Agent 对话历史，控制请求体积。
+ *
+ * 多步工具调用会在 messages 里持续追加 assistant(tool_calls) 与 tool(结果) 消息，
+ * 一个 24 步的任务能积累几十条、其中 tool 消息可能各含数万字符。
+ * 这里按上下文预算保留：system 消息 + 最近的消息对，且保证 tool 消息与其
+ * 对应的 assistant tool_call 不被拆散（否则 OpenAI 兼容端点会直接 400）。
+ */
+export function trimAgentHistory(messages: ChatMessage[], contextTokens: number): ChatMessage[] {
+  if (messages.length <= 3) return messages;
+
+  // 预留一半给 system 与模型输出，剩下的给历史
+  const budgetChars = Math.floor(contextTokens * 0.5 * 3);
+  const cost = (m: ChatMessage): number => {
+    const c = m.content;
+    const text = typeof c === 'string' ? c : JSON.stringify(c ?? '');
+    const calls = m.tool_calls ? JSON.stringify(m.tool_calls).length : 0;
+    return text.length + calls;
+  };
+
+  const system = messages[0];
+  let used = cost(system);
+  const kept: ChatMessage[] = [];
+
+  // 从尾部往前收集，遇到预算用尽即停，但至少保留尾部一条
+  for (let i = messages.length - 1; i >= 1; i--) {
+    const msg = messages[i];
+    const c = cost(msg);
+    if (used + c > budgetChars && kept.length > 0) break;
+    kept.unshift(msg);
+    used += c;
+  }
+
+  // 边界修正：若 kept 开头是 tool 消息，必须补上其所属的 assistant(tool_calls)，
+  // 否则该 tool 消息没有归属，OpenAI 兼容端点会拒绝整个请求。
+  // 优先从被裁掉的部分补回来；补不回来才丢弃这条 tool（并连带丢弃其后可能孤悬的同组 tool）。
+  while (kept.length && kept[0].role === 'tool') {
+    const toolCallId = kept[0].tool_call_id;
+    const ownerIdx = messages.findIndex(
+      (m) => m.role === 'assistant' && m.tool_calls?.some((tc) => tc.id === toolCallId),
+    );
+    const owner = ownerIdx >= 0 ? messages[ownerIdx] : undefined;
+    if (owner) {
+      kept.unshift(owner);
+      used += cost(owner);
+      break;
+    }
+    // 找不到归属：丢弃这条 tool
+    kept.shift();
+  }
+
+  return [system, ...kept];
 }

@@ -1,7 +1,18 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import type { ContentPart } from './llm.js';
-import type { Attachment, MemoryTurn, ProjectPlan, SessionMemory } from './types.js';
+import type {
+  Attachment,
+  GeneratedFileResult,
+  MemoryTurn,
+  ProjectPlan,
+  SessionMemory,
+} from './types.js';
+
+/** 默认上下文窗口（token）。DeepSeek 等主流模型的常见长上下文规格 */
+export const DEFAULT_CONTEXT_TOKENS = 128_000;
+/** 记忆可使用上下文的比例，其余留给 system prompt、需求正文与模型输出 */
+const MEMORY_BUDGET_RATIO = 0.45;
 
 /** 可作为文本读取的扩展名 */
 const TEXT_EXTS = new Set([
@@ -147,7 +158,7 @@ export class SessionStore {
   }
 }
 
-/** 记录一轮生成结果到记忆 */
+/** 记录一轮生成结果到记忆（不按轮数裁剪，轮数上限由 buildMemoryBrief 按 token 预算决定） */
 export function recordTurn(
   memory: SessionMemory,
   requirement: string,
@@ -161,23 +172,123 @@ export function recordTurn(
     at: new Date().toISOString(),
   };
   memory.turns.push(turn);
-  // 只保留最近 10 轮，避免上下文无限膨胀
-  if (memory.turns.length > 10) memory.turns = memory.turns.slice(-10);
   for (const n of attachmentNames) {
     if (!memory.attachmentNames.includes(n)) memory.attachmentNames.push(n);
   }
   return memory;
 }
 
-/** 把历史记忆压缩为可注入 system prompt 的简短上下文 */
-export function buildMemoryBrief(memory: SessionMemory | null): string {
+/** 把本轮写入的源码存为快照（覆盖上一份，不累积） */
+export function recordCodeSnapshot(
+  memory: SessionMemory,
+  files: GeneratedFileResult[],
+  budgetBytes: number,
+): SessionMemory {
+  const candidates = files
+    .filter((f) => f.status === 'ok' && f.content && isSourceFile(f.path))
+    .sort((a, b) => a.path.localeCompare(b.path));
+
+  const kept: { path: string; content: string }[] = [];
+  let used = 0;
+  let omitted = 0;
+  for (const f of candidates) {
+    const content = f.content ?? '';
+    if (used + content.length > budgetBytes) {
+      omitted++;
+      continue;
+    }
+    used += content.length;
+    kept.push({ path: f.path, content });
+  }
+
+  memory.codeSnapshot = {
+    at: new Date().toISOString(),
+    files: kept,
+    omitted,
+  };
+  return memory;
+}
+
+/** 参与快照的源码后缀（厂商库与构建产物不进快照，否则会把预算吃光） */
+const SNAPSHOT_EXTS = ['.c', '.h', '.cpp', '.hpp', '.py', '.ino'];
+
+function isSourceFile(path: string): boolean {
+  if (/^(Drivers|Libraries|managed_components|\.pio)\//i.test(path)) return false;
+  return SNAPSHOT_EXTS.some((ext) => path.toLowerCase().endsWith(ext));
+}
+
+/**
+ * 粗略估算 token 数。
+ * 中文按 1 字 ≈ 1 token，英文按 4 字符 ≈ 1 token，取偏保守的估计，
+ * 宁可少放内容也不要超出模型窗口。
+ */
+export function estimateTokens(text: string): number {
+  let cjk = 0;
+  let other = 0;
+  for (const ch of text) {
+    if (ch.charCodeAt(0) > 0x2e7f) cjk++;
+    else other++;
+  }
+  return Math.ceil(cjk + other / 3.5);
+}
+
+/** 把历史记忆压缩为可注入 system prompt 的上下文（按 token 预算，而非固定轮数） */
+export function buildMemoryBrief(
+  memory: SessionMemory | null,
+  opts: { contextTokens?: number; reserveRatio?: number } = {},
+): string {
   if (!memory || !memory.turns.length) return '';
-  const lines = memory.turns.map(
-    (t, i) =>
-      `第 ${i + 1} 轮｜需求: ${t.requirement}｜工程: ${t.planSummary}｜文件: ${t.files.join(', ')}`,
-  );
-  const files = memory.attachmentNames.length
-    ? `\n已上传参考资料: ${memory.attachmentNames.join(', ')}`
-    : '';
-  return `\n\n【同一会话的历史记录，用户的新指令是在这些工程基础上迭代，请保持工程名、平台与引脚约定一致，不要推翻已有设计，除非用户明确要求】\n${lines.join('\n')}${files}`;
+
+  const total = opts.contextTokens && opts.contextTokens > 0 ? opts.contextTokens : DEFAULT_CONTEXT_TOKENS;
+  // 给 system prompt、需求正文、模型输出留出空间，记忆只占其中一部分
+  const budget = Math.max(1000, Math.floor(total * (opts.reserveRatio ?? MEMORY_BUDGET_RATIO)));
+
+  const header =
+    '\n\n【同一会话的历史记录，用户的新指令是在这些工程基础上迭代，请保持工程名、平台与引脚约定一致，不要推翻已有设计，除非用户明确要求】';
+
+  const render = (t: MemoryTurn, i: number): string =>
+    `第 ${i + 1} 轮｜需求: ${t.requirement}｜工程: ${t.planSummary}｜文件: ${t.files.join(', ')}`;
+
+  // 从最新一轮往前取，直到用完预算；保证最新一轮始终在内
+  const picked: string[] = [];
+  let used = estimateTokens(header);
+  for (let i = memory.turns.length - 1; i >= 0; i--) {
+    const line = render(memory.turns[i], i);
+    const cost = estimateTokens(line) + 1;
+    if (picked.length > 0 && used + cost > budget) break;
+    picked.unshift(line);
+    used += cost;
+  }
+
+  const omittedTurns = memory.turns.length - picked.length;
+  const parts: string[] = [header];
+  if (omittedTurns > 0) {
+    // 说明截断事实，避免模型误以为会话刚开始
+    parts.push(`（较早的 ${omittedTurns} 轮因上下文预算已省略，如需细节请要求用户重述）`);
+  }
+  parts.push(picked.join('\n'));
+
+  if (memory.attachmentNames.length) {
+    parts.push(`已上传参考资料: ${memory.attachmentNames.join(', ')}`);
+  }
+
+  // 最近一次的源码：多轮迭代时必须能看到上一版实现，否则只能凭规划摘要猜
+  const snap = memory.codeSnapshot;
+  if (snap && snap.files.length) {
+    const snapTokens = estimateTokens(snap.files.map((f) => f.content).join(''));
+    if (used + snapTokens <= budget) {
+      const blocks = snap.files.map((f) => `### ${f.path}\n\`\`\`\n${f.content}\n\`\`\``);
+      parts.push(
+        `\n【上一轮生成的源码快照（${snap.at}）。迭代时请在此基础上修改，不要凭记忆重写】` +
+          (snap.omitted > 0 ? `\n（另有 ${snap.omitted} 个文件因体积省略）` : '') +
+          `\n${blocks.join('\n\n')}`,
+      );
+    } else {
+      parts.push(
+        `\n【上一轮生成的源码快照因体积超出上下文预算未载入，文件清单：】\n${snap.files.map((f) => `- ${f.path}`).join('\n')}`,
+      );
+    }
+  }
+
+  return parts.join('\n');
 }

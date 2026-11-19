@@ -5,6 +5,9 @@ import {
   buildMemoryBrief,
   buildTextContext,
   buildUserMessage,
+  DEFAULT_CONTEXT_TOKENS,
+  estimateTokens,
+  recordCodeSnapshot,
   recordTurn,
   SessionStore,
 } from '../src/core/context.js';
@@ -82,11 +85,94 @@ describe('session memory', () => {
     expect(s.attachmentNames).toContain('sch.png');
   });
 
-  it('最多保留 10 轮', () => {
+  it('不再按固定轮数丢弃历史（长会话全量保留）', () => {
     const s: SessionMemory = { id: 's2', createdAt: '', updatedAt: '', turns: [], attachmentNames: [] };
-    for (let i = 0; i < 12; i++) recordTurn(s, `需求${i}`, makePlan({ projectName: `p${i}` }), []);
-    expect(s.turns).toHaveLength(10);
-    expect(s.turns[9].requirement).toBe('需求11');
+    for (let i = 0; i < 40; i++) recordTurn(s, `需求${i}`, makePlan({ projectName: `p${i}` }), []);
+    // 记录阶段不裁剪，轮数上限交给 buildMemoryBrief 按上下文预算决定
+    expect(s.turns).toHaveLength(40);
+    expect(s.turns[39].requirement).toBe('需求39');
+  });
+
+  it('大上下文窗口能带更多轮历史', () => {
+    const s: SessionMemory = { id: 's3a', createdAt: '', updatedAt: '', turns: [], attachmentNames: [] };
+    // 每轮塞较长需求，才能在 4k 与 128k 之间拉开可见差距
+    const long = '采集多路传感器并通过 OLED 显示，同时用串口上报'.repeat(40);
+    for (let i = 0; i < 40; i++) {
+      recordTurn(s, `需求${i}: ${long}`, makePlan({ projectName: `p${i}` }), []);
+    }
+    const small = buildMemoryBrief(s, { contextTokens: 4_000 });
+    const large = buildMemoryBrief(s, { contextTokens: 128_000 });
+    // 128k 窗口应比 4k 窗口保留更多轮次
+    expect(large.length).toBeGreaterThan(small.length);
+    expect(large).toContain('需求39');
+    expect(small).toContain('需求39'); // 最新一轮必须始终保留
+    // 小窗口应发生了省略
+    expect(small).toMatch(/较早的 \d+ 轮因上下文预算已省略/);
+    expect(large).not.toMatch(/因上下文预算已省略/);
+  });
+
+  it('上下文不足时明确标注省略了多少轮，而不是静默截断', () => {
+    const s: SessionMemory = { id: 's3b', createdAt: '', updatedAt: '', turns: [], attachmentNames: [] };
+    for (let i = 0; i < 60; i++) recordTurn(s, `需求${i}`, makePlan({ projectName: `p${i}` }), []);
+    const brief = buildMemoryBrief(s, { contextTokens: 4_000 });
+    expect(brief).toMatch(/较早的 \d+ 轮因上下文预算已省略/);
+  });
+
+  it('recordCodeSnapshot 保留源码并遵守字节预算', () => {
+    const s: SessionMemory = { id: 's3c', createdAt: '', updatedAt: '', turns: [], attachmentNames: [] };
+    const files = [
+      { path: 'Core/Src/app.c', status: 'ok' as const, content: 'a'.repeat(1000) },
+      { path: 'Core/Inc/app.h', status: 'ok' as const, content: 'b'.repeat(500) },
+      // 厂商库不应进快照
+      { path: 'Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal.c', status: 'ok' as const, content: 'x'.repeat(9000) },
+      { path: 'Makefile', status: 'ok' as const, content: 'all:' },
+    ];
+    recordCodeSnapshot(s, files, 2000);
+    const snap = s.codeSnapshot!;
+    expect(snap.files.map((f) => f.path)).toEqual(['Core/Inc/app.h', 'Core/Src/app.c']);
+    expect(snap.files.some((f) => f.path.startsWith('Drivers/'))).toBe(false);
+  });
+
+  it('快照内容会进入 memory brief，供下一轮迭代参照', () => {
+    const s: SessionMemory = { id: 's3d', createdAt: '', updatedAt: '', turns: [], attachmentNames: [] };
+    recordTurn(s, '点灯', makePlan(), []);
+    recordCodeSnapshot(s, [
+      { path: 'Core/Src/app.c', status: 'ok', content: 'void app_loop(void){ /* MARKER_X */ }' },
+    ], 10_000);
+    const brief = buildMemoryBrief(s, { contextTokens: 128_000 });
+    expect(brief).toContain('源码快照');
+    expect(brief).toContain('MARKER_X');
+  });
+
+  it('estimateTokens 对中文给出保守估计', () => {
+    expect(estimateTokens('中文')).toBeGreaterThanOrEqual(2);
+    expect(estimateTokens('')).toBe(0);
+  });
+
+  it('1M 上下文可携带远多于 128k 的历史', () => {
+    const s: SessionMemory = { id: 's-big', createdAt: '', updatedAt: '', turns: [], attachmentNames: [] };
+    const long = '采集温湿度并通过 OLED 显示，同时串口上报数据'.repeat(60);
+    for (let i = 0; i < 200; i++) {
+      recordTurn(s, `需求${i}: ${long}`, makePlan({ projectName: `p${i}` }), []);
+    }
+    const k128 = buildMemoryBrief(s, { contextTokens: 128_000 });
+    const m1 = buildMemoryBrief(s, { contextTokens: 1_000_000 });
+    // 1M 窗口应保留明显更多轮次
+    expect(m1.length).toBeGreaterThan(k128.length);
+    // 两者都必须包含最新一轮
+    expect(k128).toContain('需求199');
+    expect(m1).toContain('需求199');
+    // 1M 窗口下也能回溯到更早的轮次
+    expect(m1).toContain('需求0');
+  });
+
+  it('缺省上下文窗口为 128k', () => {
+    const s: SessionMemory = { id: 's-default', createdAt: '', updatedAt: '', turns: [], attachmentNames: [] };
+    const long = '需求描述'.repeat(200);
+    for (let i = 0; i < 80; i++) recordTurn(s, `${i}:${long}`, makePlan(), []);
+    const def = buildMemoryBrief(s);
+    const explicit = buildMemoryBrief(s, { contextTokens: DEFAULT_CONTEXT_TOKENS });
+    expect(def).toBe(explicit);
   });
 
   it('buildMemoryBrief 包含历史需求', () => {

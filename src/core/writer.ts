@@ -1,7 +1,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { PLATFORM_TEMPLATES, getBuildFiles } from './templates.js';
-import type { GeneratedFileResult, ProjectPlan, ReviewResult } from './types.js';
+import type { GeneratedFileResult, ProjectPlan, ReviewResult, VerifyResult } from './types.js';
+import { extractErrors } from './verify.js';
 
 /** 构建系统 -> 生成工程里应该看到的构建文件特征 */
 const BUILD_FILE_SIGNATURES: Record<string, string[]> = {
@@ -28,6 +29,7 @@ function buildProjectReadme(
   aiFailed: GeneratedFileResult[],
   review?: ReviewResult | null,
   writtenPaths: string[] = [],
+  verify?: VerifyResult | null,
 ): string {
   const template = PLATFORM_TEMPLATES[plan.platform];
   const buildFiles = getBuildFiles(plan.platform, plan.buildSystem);
@@ -96,6 +98,28 @@ function buildProjectReadme(
       lines.push(`- **[${i.severity}]** \`${i.file}\`：${i.description}`);
     }
   }
+  if (verify) {
+    lines.push('');
+    lines.push('## 🔧 编译验证');
+    lines.push('');
+    if (!verify.attempted) {
+      lines.push(`⚪ 未执行：${verify.reason ?? '本地工具链不可用'}`);
+    } else if (verify.ok) {
+      const size = verify.artifactSize != null ? `，产物 ${verify.artifactSize} 字节` : '';
+      lines.push(`✅ 通过：\`${verify.command}\`（${(verify.elapsedMs / 1000).toFixed(1)}s${size}）`);
+      if (verify.artifact) lines.push('');
+      if (verify.artifact) lines.push(`产物：\`${verify.artifact}\``);
+    } else {
+      lines.push(`❌ 失败：\`${verify.command}\` 退出码 ${verify.exitCode}`);
+      const errs = extractErrors(verify.output, 8);
+      if (errs.length) {
+        lines.push('');
+        lines.push('```text');
+        for (const e of errs) lines.push(e);
+        lines.push('```');
+      }
+    }
+  }
   if (aiFailed.length) {
     lines.push('');
     lines.push('## ⚠️ 生成提示');
@@ -127,6 +151,7 @@ export function writeProject(
   plan: ProjectPlan,
   files: GeneratedFileResult[],
   review?: ReviewResult | null,
+  verify?: VerifyResult | null,
 ): WriteResult {
   mkdirSync(outDir, { recursive: true });
 
@@ -144,6 +169,7 @@ export function writeProject(
     failed,
     review,
     okFiles.map((f) => f.path),
+    verify,
   );
   writeFileSync(join(outDir, readmePath), stripBom(readmeContent), 'utf8');
 

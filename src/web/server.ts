@@ -1,5 +1,6 @@
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { attachmentFromContent, openFolder, runEmbedForge } from '../index.js';
+import { SessionStore } from '../core/context.js';
 import { loadAllSkills } from '../core/skills.js';
 import type { LlmConfig, WebServerConfig } from '../core/types.js';
 import { UI_HTML } from './ui.js';
@@ -52,6 +53,52 @@ export function startWebServer(
         sendJson(res, 200, { skills });
         return;
       }
+      // 本地会话列表：供左栏「项目工程区」展示与续接
+      if (req.method === 'GET' && url.startsWith('/api/sessions')) {
+        const store = new SessionStore();
+        const sessions = store
+          .list()
+          .map((id) => {
+            const m = store.load(id);
+            if (!m) return null;
+            return {
+              id,
+              turns: m.turns.length,
+              updatedAt: m.updatedAt,
+              lastRequirement: m.turns.at(-1)?.requirement ?? '',
+              projectName: m.turns.at(-1)?.planSummary?.split(' / ')[0] ?? '',
+            };
+          })
+          .filter((x): x is NonNullable<typeof x> => x !== null)
+          .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+        sendJson(res, 200, { sessions });
+        return;
+      }
+      // 读取单个会话的历史轮次
+      if (req.method === 'GET' && url.startsWith('/api/session?')) {
+        const id = new URL(url, 'http://localhost').searchParams.get('id') ?? '';
+        const store = new SessionStore();
+        const m = id ? store.load(id) : null;
+        if (!m) {
+          sendJson(res, 404, { error: '会话不存在' });
+          return;
+        }
+        sendJson(res, 200, {
+          id: m.id,
+          turns: m.turns,
+          updatedAt: m.updatedAt,
+          hasSnapshot: Boolean(m.codeSnapshot?.files.length),
+          contextTokens: m.contextTokens,
+          lastVerify: m.lastVerify ?? null,
+          // 上一轮源码快照：续接会话后左栏可直接浏览历史工程文件
+          snapshotFiles: (m.codeSnapshot?.files ?? []).map((f) => ({
+            path: f.path,
+            status: 'ok',
+            content: f.content,
+          })),
+        });
+        return;
+      }
       if (req.method === 'POST' && url === '/api/generate') {
         const raw = await readBody(req);
         const body = JSON.parse(raw) as {
@@ -62,6 +109,8 @@ export function startWebServer(
           platform?: string;
           buildSystem?: string;
           sessionId?: string;
+          contextTokens?: number;
+          verify?: boolean;
           attachments?: RawAttachment[];
           skills?: string[];
           noSkills?: boolean;
@@ -80,6 +129,7 @@ export function startWebServer(
           baseURL: body.baseURL?.trim() || defaults.baseURL || 'http://localhost:11434/v1',
           model: body.model?.trim() || defaults.model || 'qwen2.5:7b',
           apiKey: body.apiKey?.trim() || defaults.apiKey || undefined,
+          contextTokens: body.contextTokens && body.contextTokens > 0 ? body.contextTokens : defaults.contextTokens,
         };
         console.log(
           `[generate] baseURL=${llm.baseURL} model=${llm.model} hasKey=${Boolean(llm.apiKey)} platform=${body.platform || 'auto'} req="${requirement.slice(0, 60)}"`,
@@ -90,6 +140,8 @@ export function startWebServer(
           outDir: './generated',
           attachments,
           sessionId: body.sessionId,
+          contextTokens: body.contextTokens && body.contextTokens > 0 ? body.contextTokens : undefined,
+          verify: Boolean(body.verify),
           skills: body.skills,
           noSkills: body.noSkills,
         });
@@ -101,7 +153,7 @@ export function startWebServer(
           console.log(`[generate] OK ${result.aiGeneratedCount} AI files generated`);
         }
         openFolder(outDir);
-        sendJson(res, 200, { plan, result, session: { id: session.id, turns: session.turns } });
+        sendJson(res, 200, { plan, result, verify: result.verify ?? null, session: { id: session.id, turns: session.turns } });
         return;
       }
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
